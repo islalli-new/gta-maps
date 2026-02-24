@@ -16,7 +16,7 @@
             box-sizing: border-box;
             user-select: none;
             -webkit-user-select: none;
-            touch-action: none; /* Essencial para o slider vertical não rolar a tela no mobile */
+            touch-action: none;
         }
 
         body, html {
@@ -36,13 +36,21 @@
             top: 0;
             left: 0;
             z-index: 1;
-            background-color: #000; /* Fundo escuro para caso o mapa demore a carregar */
+            background-color: #000;
         }
 
-        /* Efeito Híbrido: Satélite noturno/cyberpunk */
+        /* Efeito Híbrido Suavizado: Satélite noturno reconhecível */
         .leaflet-tile {
-            /* Tira um pouco da cor, escurece bem, aumenta contraste e joga um tom azulado neon */
-            filter: grayscale(60%) brightness(0.35) contrast(1.5) sepia(40%) hue-rotate(180deg);
+            filter: grayscale(40%) brightness(0.65) contrast(1.2) hue-rotate(180deg);
+        }
+
+        /* Linha de Partida/Chegada */
+        .start-line {
+            background: repeating-linear-gradient(90deg, #fff 0px, #fff 4px, #000 4px, #000 8px);
+            border: 1px solid #00f3ff;
+            box-shadow: 0 0 10px #00f3ff;
+            width: 100%;
+            height: 100%;
         }
 
         /* Efeito Glow (Brilho Neon) na linha da pista */
@@ -64,72 +72,9 @@
             justify-content: space-between;
         }
 
-        /* HUD Superior */
-        .hud-top {
-            background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent);
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            pointer-events: auto;
-        }
-
-        .stats-panel {
-            background: rgba(0, 20, 40, 0.8);
-            border: 2px solid #00f3ff;
-            border-radius: 10px;
-            padding: 15px;
-            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
-            min-width: 160px;
-        }
-
-        .stat-line {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 10px;
-        }
-
-        .stat-line:last-child { margin-bottom: 0; }
-
-        .stat-label {
-            font-size: 10px;
-            color: #00f3ff;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .stat-value {
-            font-size: 20px; /* Reduzido para caber o timer */
-            color: #fff;
-            font-weight: 700;
-            text-shadow: 0 0 5px #fff;
-            font-variant-numeric: tabular-nums; /* Evita que o timer fique tremendo */
-        }
-
-        /* Botão de Pause */
-        #pause-btn {
-            margin-top: 15px;
-            width: 100%;
-            background: rgba(0, 20, 40, 0.8);
-            border: 1px solid #00f3ff;
-            color: #00f3ff;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 14px;
-            padding: 8px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.2s, color 0.2s;
-        }
-
-        #pause-btn:active {
-            background: #00f3ff;
-            color: #000;
-        }
-
-        /* Título */
         .title {
             position: absolute;
-            top: 20px;
+            top: 15px;
             left: 50%;
             transform: translateX(-50%);
             color: #00f3ff;
@@ -141,253 +86,253 @@
             text-align: center;
         }
 
-        /* Controle Deslizante (Slider / Gatilho) */
+        /* HUD Superior (Agora em linha e deslocado do título) */
+        .hud-top {
+            background: linear-gradient(to bottom, rgba(0,0,0,0.9), rgba(0,0,0,0.5), transparent);
+            padding: 60px 20px 20px 20px; /* Margem superior para respeitar o título */
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: auto;
+        }
+
+        .stats-panel {
+            background: rgba(0, 20, 40, 0.8);
+            border: 2px solid #00f3ff;
+            border-radius: 10px;
+            padding: 10px 20px;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
+            display: flex;
+            flex-direction: row; /* Modificado para alinhar em linha */
+            flex-wrap: wrap;
+            gap: 25px;
+            align-items: center;
+        }
+
+        .stat-line {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: #00f3ff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            color: #fff;
+            font-weight: 700;
+            text-shadow: 0 0 5px #fff;
+            font-variant-numeric: tabular-nums;
+        }
+
+        #pause-btn {
+            background: rgba(0, 20, 40, 0.8);
+            border: 1px solid #00f3ff;
+            color: #00f3ff;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 14px;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        #pause-btn:active {
+            background: #00f3ff;
+            color: #000;
+        }
+
+        /* Controle Deslizante (Slider HORIZONTAL / Gatilho Inferior) */
         #controller-area {
             position: absolute;
-            right: 20px;
-            bottom: 40px;
-            width: 60px;
-            height: 40vh; /* 40% da altura da tela */
-            min-height: 200px;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            width: 70vw;
+            max-width: 500px;
+            height: 70px;
             background: rgba(0, 20, 40, 0.9);
             border: 2px solid #00f3ff;
-            border-radius: 30px;
+            border-radius: 35px;
             box-shadow: 0 0 20px rgba(0, 243, 255, 0.4), inset 0 0 20px #000;
             pointer-events: auto;
             display: flex;
-            justify-content: center;
+            align-items: center;
         }
 
-        /* Trilho Visual do Slider */
         #controller-area::before {
             content: '';
             position: absolute;
-            top: 20px;
-            bottom: 20px;
-            width: 4px;
+            top: 50%;
+            left: 20px;
+            right: 20px;
+            height: 6px;
             background: #004466;
-            border-radius: 2px;
+            border-radius: 3px;
+            transform: translateY(-50%);
             z-index: 1;
         }
 
         #slider-thumb {
             position: absolute;
-            bottom: 10px;
-            width: 46px;
-            height: 70px;
-            background: linear-gradient(to right, #00ff00, #009900);
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.8), inset 0 2px 10px rgba(255,255,255,0.4);
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 70px;
+            height: 50px;
+            background: linear-gradient(to bottom, #00ff00, #009900);
+            border-radius: 25px;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.8), inset 2px 0 10px rgba(255,255,255,0.4);
             cursor: pointer;
             z-index: 2;
-            transition: bottom 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Efeito mola ao soltar */
+            transition: left 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Voltar para a esquerda */
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
         #slider-thumb::after {
-            content: '▲';
+            content: '▶';
             color: rgba(0,0,0,0.5);
-            font-size: 20px;
+            font-size: 24px;
+            margin-left: 2px;
         }
 
         #slider-thumb.dragging {
-            transition: none; /* Segue o dedo instantaneamente */
-            background: linear-gradient(to right, #00ffcc, #00aa88);
-            box-shadow: 0 0 20px #00ffcc, inset 0 2px 10px rgba(255,255,255,0.6);
+            transition: none;
+            background: linear-gradient(to bottom, #00ffcc, #00aa88);
+            box-shadow: 0 0 20px #00ffcc, inset 2px 0 10px rgba(255,255,255,0.6);
         }
 
         /* Semáforo de Largada */
         #semaforo-screen {
             position: absolute;
-            top: 30%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            display: none;
-            flex-direction: row;
-            gap: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            padding: 20px;
-            border-radius: 20px;
-            border: 3px solid #333;
-            z-index: 150;
-            pointer-events: none;
+            top: 30%; left: 50%; transform: translate(-50%, -50%);
+            display: none; flex-direction: row; gap: 20px;
+            background: rgba(0, 0, 0, 0.8); padding: 20px;
+            border-radius: 20px; border: 3px solid #333;
+            z-index: 150; pointer-events: none;
         }
 
         .luz {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: #222;
-            border: 2px solid #111;
-            box-shadow: inset 0 5px 10px rgba(0,0,0,0.8);
-            transition: all 0.2s;
+            width: 60px; height: 60px; border-radius: 50%;
+            background: #222; border: 2px solid #111;
+            box-shadow: inset 0 5px 10px rgba(0,0,0,0.8); transition: all 0.2s;
         }
 
-        .luz.red-on {
-            background: #ff0000;
-            box-shadow: 0 0 30px #ff0000, inset 0 5px 10px rgba(255,255,255,0.4);
-        }
+        .luz.red-on { background: #ff0000; box-shadow: 0 0 30px #ff0000, inset 0 5px 10px rgba(255,255,255,0.4); }
+        .luz.green-on { background: #00ff00; box-shadow: 0 0 40px #00ff00, inset 0 5px 10px rgba(255,255,255,0.6); }
 
-        .luz.green-on {
-            background: #00ff00;
-            box-shadow: 0 0 40px #00ff00, inset 0 5px 10px rgba(255,255,255,0.6);
-        }
-
-        /* Tela de Loading (Gerando Rota) */
+        /* Telas de Informação / Loading / Resultados */
         #loading-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            transition: opacity 0.5s;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 100; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; transition: opacity 0.5s;
         }
 
         #loading-screen h2 {
-            color: #00f3ff;
-            font-size: 24px;
-            text-shadow: 0 0 10px #00f3ff;
-            animation: pulse 1s infinite alternate;
-            text-align: center;
-            padding: 20px;
+            color: #00f3ff; font-size: 24px; text-shadow: 0 0 10px #00f3ff;
+            animation: pulse 1s infinite alternate; text-align: center; padding: 20px;
         }
 
-        @keyframes pulse {
-            from { opacity: 0.5; }
-            to { opacity: 1; }
+        @keyframes pulse { from { opacity: 0.5; } to { opacity: 1; } }
+
+        #menu-screen, #results-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 5, 15, 0.95); z-index: 200;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s;
         }
 
-        /* Tela de Menu (Início/Pause) */
-        #menu-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 5, 15, 0.95);
-            z-index: 200;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s;
-        }
-
-        #menu-screen.visible {
-            opacity: 1;
-            pointer-events: auto;
-        }
+        #menu-screen.visible, #results-screen.visible { opacity: 1; pointer-events: auto; }
 
         .menu-box {
-            background: rgba(0, 20, 40, 0.9);
-            border: 2px solid #00f3ff;
-            padding: 40px;
-            border-radius: 15px;
-            text-align: center;
+            background: rgba(0, 20, 40, 0.9); border: 2px solid #00f3ff;
+            padding: 40px; border-radius: 15px; text-align: center;
             box-shadow: 0 0 40px rgba(0, 243, 255, 0.2);
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            width: 90%;
-            max-width: 400px;
+            display: flex; flex-direction: column; gap: 15px; width: 90%; max-width: 450px;
+            max-height: 90vh; overflow-y: auto;
         }
 
         .menu-box select, .menu-box input[type="text"], .menu-box input[type="number"] {
-            width: 100%;
-            padding: 12px;
-            background: #000;
-            color: #00f3ff;
-            border: 1px solid #00f3ff;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 16px;
-            outline: none;
-            border-radius: 5px;
-            margin-bottom: 5px;
+            width: 100%; padding: 12px; background: #000; color: #00f3ff;
+            border: 1px solid #00f3ff; font-family: 'Orbitron', sans-serif;
+            font-size: 16px; outline: none; border-radius: 5px; margin-bottom: 5px;
         }
 
-        .menu-box label {
-            text-align: left;
-            margin-bottom: -15px;
-        }
+        .menu-box label { text-align: left; margin-bottom: -10px; }
 
         .menu-btn {
-            padding: 15px 30px;
-            background: linear-gradient(to right, #0055ff, #00aaff);
-            border: none;
-            color: white;
-            font-family: 'Orbitron', sans-serif;
-            font-weight: bold;
-            font-size: 16px;
-            cursor: pointer;
-            border-radius: 5px;
-            box-shadow: 0 0 15px rgba(0, 170, 255, 0.4);
-            transition: transform 0.1s;
-            text-transform: uppercase;
+            padding: 15px 30px; background: linear-gradient(to right, #0055ff, #00aaff);
+            border: none; color: white; font-family: 'Orbitron', sans-serif;
+            font-weight: bold; font-size: 16px; cursor: pointer; border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0, 170, 255, 0.4); transition: transform 0.1s; text-transform: uppercase;
         }
+        .menu-btn:active { transform: scale(0.95); }
 
-        .menu-btn:active {
-            transform: scale(0.95);
-        }
+        .res-highlight { color: #00f3ff; font-weight: bold; font-size: 22px; margin-left: 10px; }
 
-        /* Carro CSS */
+        /* --- CARRO E HUD RADIAL --- */
         .car-container {
-            width: 30px;
-            height: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 30px; height: 14px; display: flex; align-items: center;
+            justify-content: center; position: relative;
         }
         
         #car-body {
-            width: 30px;
-            height: 14px;
-            background: #ff0055;
-            border-radius: 4px;
-            border: 2px solid #fff;
-            box-shadow: 0 0 10px #ff0055;
-            position: relative;
+            width: 30px; height: 14px; background: #ff0055;
+            border-radius: 4px; border: 2px solid #fff;
+            box-shadow: 0 0 10px #ff0055; position: relative; z-index: 2;
         }
-        #car-body::before {
-            content: '';
-            position: absolute;
-            right: 0;
-            top: 1px;
-            width: 4px;
-            height: 3px;
-            background: #fff;
-            box-shadow: 5px 0 10px #fff;
-            border-radius: 50%;
+        
+        #car-body::before, #car-body::after {
+            content: ''; position: absolute; right: 0; width: 4px; height: 3px;
+            background: #fff; box-shadow: 5px 0 10px #fff; border-radius: 50%;
         }
-        #car-body::after {
-            content: '';
-            position: absolute;
-            right: 0;
-            bottom: 1px;
-            width: 4px;
-            height: 3px;
-            background: #fff;
-            box-shadow: 5px 0 10px #fff;
-            border-radius: 50%;
+        #car-body::before { top: 1px; } #car-body::after { bottom: 1px; }
+
+        #car-hud {
+            position: absolute; left: -40px; top: -18px; width: 50px; height: 50px; z-index: 1;
         }
 
-        /* Responsividade Básica */
+        #hud-speed-text {
+            position: absolute; top: 20px; left: -12px; width: 30px; text-align: center;
+            color: #fff; font-size: 11px; font-weight: 900;
+            text-shadow: 0 0 4px #000, 0 0 8px #00f3ff;
+        }
+
+        /* --- EFEITOS MACH 1 --- */
+        .sonic-boom {
+            position: absolute; width: 100px; height: 100px;
+            background: radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(0,243,255,0.8) 40%, rgba(0,0,0,0) 70%);
+            border-radius: 50%; transform: translate(-50%, -50%) scale(0.1);
+            animation: boom-expand 0.6s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+            pointer-events: none; mix-blend-mode: screen; z-index: 5;
+        }
+
+        @keyframes boom-expand { to { transform: translate(-50%, -50%) scale(10); opacity: 0; } }
+
+        @keyframes sonic-shake {
+            0% { margin-top: 0px; margin-left: 0px; } 25% { margin-top: 2px; margin-left: 2px; }
+            50% { margin-top: -2px; margin-left: 0px; } 75% { margin-top: 0px; margin-left: -2px; }
+            100% { margin-top: -2px; margin-left: 2px; }
+        }
+
+        .supersonic-car #car-body {
+            animation: sonic-shake 0.05s infinite !important;
+            box-shadow: -15px 0 20px #00f3ff, -35px 0 40px #ff0055, 0 0 15px #fff !important;
+            background: #fff !important; border-color: #00f3ff !important;
+        }
+
         @media (max-width: 600px) {
-            .title { font-size: 20px; top: 10px; }
-            .hud-top { flex-direction: column; align-items: stretch; gap: 10px; }
-            .grip-panel { width: 100%; }
-            #controller-area { height: 35vh; right: 10px; width: 50px; }
-            #slider-thumb { width: 40px; height: 60px; }
-            #crash-screen h1 { font-size: 36px; }
+            .hud-top { flex-direction: column; align-items: stretch; gap: 10px; padding-top: 60px; }
+            .stats-panel { justify-content: space-around; gap: 10px; }
+            #controller-area { width: 90vw; height: 60px; bottom: 15px; }
+            #slider-thumb { width: 60px; height: 40px; }
             .luz { width: 40px; height: 40px; }
         }
     </style>
@@ -397,51 +342,57 @@
     <div id="map"></div>
 
     <div id="game-ui">
+        <div class="title">AUTORAMAPS</div>
         <div class="hud-top">
             <div class="stats-panel">
-                <div class="stat-line">
-                    <span class="stat-label">Velocidade</span>
-                    <span class="stat-value" id="speed-display">0 <span style="font-size:12px;">KM/H</span></span>
-                </div>
                 <div class="stat-line">
                     <span class="stat-label">Tempo</span>
                     <span class="stat-value" id="time-display">00:00.000</span>
                 </div>
                 <div class="stat-line">
                     <span class="stat-label">Melhor Volta</span>
-                    <span class="stat-value" id="best-time-display" style="font-size: 14px; color: #00f3ff; opacity: 0.8;">--:--.---</span>
+                    <span class="stat-value" id="best-time-display" style="color: #00f3ff; opacity: 0.8;">--:--.---</span>
                 </div>
-                <div class="stat-line" style="margin-top: 5px;">
+                <div class="stat-line">
                     <span class="stat-label">Volta</span>
-                    <span class="stat-value" id="lap-display">1</span>
+                    <span class="stat-value" id="lap-display">1 / 3</span>
                 </div>
-                <button id="pause-btn">|| PAUSE</button>
             </div>
-
-            <div class="title">AUTORAMAPS</div>
+            <button id="pause-btn">|| PAUSE</button>
         </div>
 
-        <!-- Controlador Analógico (Slider Vertical) -->
+        <!-- Controlador Horizontal -->
         <div id="controller-area">
             <div id="slider-thumb"></div>
         </div>
     </div>
 
-    <!-- Semáforo de Largada -->
     <div id="semaforo-screen">
         <div class="luz" id="luz-1"></div>
         <div class="luz" id="luz-2"></div>
         <div class="luz" id="luz-3"></div>
     </div>
 
+    <!-- Ecrã de Resultados (Fim da Corrida) -->
+    <div id="results-screen">
+        <div class="menu-box">
+            <h1 style="color: #00ff00; font-size: 32px; text-shadow: 0 0 15px #00ff00; margin: 0;">🏁 FIM DA CORRIDA! 🏁</h1>
+            <p style="color: #fff; font-size: 18px;">Voltas Concluídas: <span id="res-laps" class="res-highlight"></span></p>
+            <p style="color: #fff; font-size: 18px;">Melhor Volta: <span id="res-best-lap" class="res-highlight"></span></p>
+            <p style="color: #fff; font-size: 18px;">Tempo Total: <span id="res-total-time" class="res-highlight" style="color: #00ff00;"></span></p>
+            <button class="menu-btn" id="res-menu-btn" style="margin-top: 15px;">VOLTAR AO MENU</button>
+        </div>
+    </div>
+
     <div id="loading-screen" style="display: none; opacity: 0;">
-        <h2>GPS: Mapeando Ruas e Gerando Circuito...</h2>
+        <h2>GPS: A Mapear Ruas e a Gerar Circuito...</h2>
     </div>
 
     <div id="menu-screen" class="visible">
-        <h1 style="color: #00f3ff; font-size: 42px; text-shadow: 0 0 20px #00f3ff; margin-bottom: 20px; text-align: center; letter-spacing: 2px;">AUTORAMAPS</h1>
         <div class="menu-box">
-            <label for="location-select" style="color: #fff; font-size: 14px; letter-spacing: 1px;">ESCOLHA UM LUGAR FAMOSO:</label>
+            <h1 style="color: #00f3ff; font-size: 38px; text-shadow: 0 0 20px #00f3ff; margin: 0; text-align: center; letter-spacing: 2px;">AUTORAMAPS</h1>
+            
+            <label for="location-select" style="color: #fff; font-size: 12px; letter-spacing: 1px; margin-top: 10px;">ESCOLHA UM LUGAR FAMOSO:</label>
             <select id="location-select">
                 <option value="-23.5855,-46.6595">Parque Ibirapuera, SP</option>
                 <option value="-23.5615,-46.6560">Av. Paulista, SP</option>
@@ -452,11 +403,19 @@
                 <option value="48.8738,2.2950">Arco do Triunfo, Paris</option>
             </select>
             
-            <label for="custom-address" style="color: #fff; font-size: 14px; letter-spacing: 1px;">OU DIGITE SEU ENDEREÇO:</label>
+            <label for="custom-address" style="color: #fff; font-size: 12px; letter-spacing: 1px;">OU DIGITE O SEU ENDEREÇO:</label>
             <input type="text" id="custom-address" placeholder="Ex: Av. Paulista, 1000, São Paulo">
             
-            <label for="custom-radius" style="color: #fff; font-size: 14px; letter-spacing: 1px;">RAIO DO CIRCUITO (KM):</label>
-            <input type="number" id="custom-radius" value="1.2" step="0.1" min="0.1">
+            <div style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                    <label for="custom-radius" style="color: #fff; font-size: 12px; letter-spacing: 1px;">RAIO DO CIRCUITO (KM):</label>
+                    <input type="number" id="custom-radius" value="1.2" step="0.1" min="0.1">
+                </div>
+                <div style="flex: 1;">
+                    <label for="custom-laps" style="color: #fff; font-size: 12px; letter-spacing: 1px;">Nº DE VOLTAS:</label>
+                    <input type="number" id="custom-laps" value="3" min="1">
+                </div>
+            </div>
 
             <div id="menu-error" style="color: #ff0055; font-size: 14px; font-weight: bold; display: none;"></div>
 
@@ -469,64 +428,47 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // --- CONFIGURAÇÕES DO JOGO ---
-        const MAX_SPEED = 150; // Velocidade física base (aumentada para efeito Arcade)
-        const ACCELERATION_MAX = 80; // Aceleração com gatilho no fundo
-        const FRICTION = 10; // Atrito natural
-        const BRAKE_FRICTION = 120; // Freio magnético quando solta o gatilho
-        const MAX_GRIP = 1500; // Tolerância centrífuga REDUZIDA (muito mais desafiador)
-        const CAMERA_ZOOM = 19.2; // Zoom muito mais próximo (fracionado) para colar no asfalto
+        // --- CONFIGURAÇÕES EXTREMAS (MACH 1) ---
+        const MAX_SPEED = 700; 
+        const ACCELERATION_MAX = 250; 
+        const FRICTION = 10; 
+        const BRAKE_FRICTION = 250; 
+        const MAX_GRIP = 2500; 
+        const CAMERA_ZOOM = 19.2; 
 
         // --- INICIALIZAÇÃO DO MAPA ---
         const map = L.map('map', {
-            zoomControl: false,
-            dragging: false,
-            touchZoom: false,
-            doubleClickZoom: false,
-            scrollWheelZoom: false,
-            boxZoom: false,
-            keyboard: false,
-            zoomSnap: 0.1 // Permite zoom fracionado para a câmera chegar mais perto
+            zoomControl: false, dragging: false, touchZoom: false, doubleClickZoom: false,
+            scrollWheelZoom: false, boxZoom: false, keyboard: false, zoomSnap: 0.1 
         });
 
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+            attribution: 'Tiles &copy; Esri',
             maxZoom: 20
         }).addTo(map);
 
-        // --- VARIÁVEIS GLOBAIS DE JOGO E MAPA ---
-        let polyline = null;
-        let carMarker = null;
-        let carBodyElement = null; 
-        let trackSegments = [];
-        let totalTrackDistance = 0;
+        // --- VARIÁVEIS GLOBAIS ---
+        let polyline = null; let carMarker = null; let startLineMarker = null;
+        let carWrapperElement = null; let hudSpeedElement = null; let hudRpmBar = null;
+        let trackSegments = []; let totalTrackDistance = 0;
 
-        // --- ESTADO DO JOGO ---
         const state = {
-            distance: 0,
-            speed: 0,
-            throttle: 0, // 0.0 a 1.0 (gatilho analógico)
-            laps: 1,
-            lapTime: 0,
-            bestLap: Infinity,
-            isSpinning: false,
-            spinTimer: 0,
-            currentAngleVisual: 0,
-            gameStarted: false,
-            isPaused: true,
-            inCountdown: false,
-            camLat: null,
-            camLng: null
+            distance: 0, speed: 0, throttle: 0, laps: 1, totalLaps: 3, 
+            lapTime: 0, totalRaceTime: 0, bestLap: Infinity,
+            isSpinning: false, spinTimer: 0, currentAngleVisual: 0,
+            gameStarted: false, isPaused: true, inCountdown: false, raceFinished: false,
+            camLat: null, camLng: null, lookAheadLat: 0, lookAheadLng: 0, mach1: false
         };
 
-        // --- ELEMENTOS DA UI ---
-        const speedDisplay = document.getElementById('speed-display');
         const lapDisplay = document.getElementById('lap-display');
         const timeDisplay = document.getElementById('time-display');
         const bestTimeDisplay = document.getElementById('best-time-display');
+        
         const menuScreen = document.getElementById('menu-screen');
+        const resultsScreen = document.getElementById('results-screen');
         const startBtn = document.getElementById('menu-start-btn');
         const resumeBtn = document.getElementById('menu-resume-btn');
+        const resMenuBtn = document.getElementById('res-menu-btn');
         const locationSelect = document.getElementById('location-select');
         const pauseBtn = document.getElementById('pause-btn');
         
@@ -538,7 +480,6 @@
         const luz2 = document.getElementById('luz-2');
         const luz3 = document.getElementById('luz-3');
 
-        // Função de formatar tempo da volta
         function formatLapTime(ms) {
             if (ms === 0 || ms === Infinity) return "--:--.---";
             let date = new Date(Math.max(0, ms));
@@ -548,9 +489,8 @@
             return `${m}:${s}.${mil}`;
         }
 
-        // --- LÓGICA DE MENU E PAUSE ---
         pauseBtn.addEventListener('click', () => {
-            if (!state.gameStarted || state.inCountdown) return;
+            if (!state.gameStarted || state.inCountdown || state.raceFinished) return;
             state.isPaused = true;
             resetThrottle();
             menuScreen.classList.add('visible');
@@ -563,17 +503,25 @@
             menuScreen.classList.remove('visible');
         });
 
+        resMenuBtn.addEventListener('click', () => {
+            resultsScreen.classList.remove('visible');
+            menuScreen.classList.add('visible');
+            resumeBtn.style.display = 'none';
+            startBtn.innerText = 'GERAR PISTA & INICIAR';
+        });
+
         startBtn.addEventListener('click', async () => {
             const errorMsg = document.getElementById('menu-error');
             errorMsg.style.display = 'none';
 
             const radiusInput = document.getElementById('custom-radius').value;
             const radiusKm = parseFloat(radiusInput) || 1.2;
-            
-            if (radiusKm <= 0) {
-                errorMsg.innerText = "O raio deve ser maior que zero.";
-                errorMsg.style.display = 'block';
-                return;
+            const lapsInput = document.getElementById('custom-laps').value;
+            const totalLaps = parseInt(lapsInput) || 3;
+
+            if (radiusKm <= 0 || totalLaps <= 0) {
+                errorMsg.innerText = "Valores inválidos. Verifique o raio e voltas.";
+                errorMsg.style.display = 'block'; return;
             }
 
             const customAddress = document.getElementById('custom-address').value.trim();
@@ -582,27 +530,22 @@
             menuScreen.classList.remove('visible');
             const loadingScreen = document.getElementById('loading-screen');
             const loadingTitle = loadingScreen.querySelector('h2');
-            loadingScreen.style.display = 'flex';
-            loadingScreen.style.opacity = '1';
+            loadingScreen.style.display = 'flex'; loadingScreen.style.opacity = '1';
 
             if (customAddress !== "") {
-                loadingTitle.innerText = "GPS: Buscando endereço...";
+                loadingTitle.innerText = "GPS: A procurar endereço...";
                 try {
                     const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(customAddress)}`);
                     const data = await response.json();
-                    
                     if (data && data.length > 0) {
-                        lat = parseFloat(data[0].lat);
-                        lng = parseFloat(data[0].lon);
-                    } else {
-                        throw new Error("Endereço não encontrado.");
-                    }
+                        lat = parseFloat(data[0].lat); lng = parseFloat(data[0].lon);
+                    } else { throw new Error("Endereço não encontrado."); }
                 } catch (e) {
                     loadingScreen.style.opacity = '0';
                     setTimeout(() => {
                         loadingScreen.style.display = 'none';
                         menuScreen.classList.add('visible');
-                        errorMsg.innerText = "Endereço não encontrado! Tente adicionar cidade ou estado.";
+                        errorMsg.innerText = "Endereço não encontrado! Tente adicionar cidade ou país.";
                         errorMsg.style.display = 'block';
                     }, 500);
                     return;
@@ -611,35 +554,29 @@
                 [lat, lng] = locationSelect.value.split(',').map(Number);
             }
             
-            loadingTitle.innerText = "GPS: Mapeando Ruas e Gerando Circuito...";
-            initGame(lat, lng, radiusKm);
+            loadingTitle.innerText = "GPS: A mapear ruas e a gerar circuito...";
+            initGame(lat, lng, radiusKm, totalLaps);
         });
 
-        async function initGame(centerLat, centerLng, radiusKm) {
+        async function initGame(centerLat, centerLng, radiusKm, totalLaps) {
             if (polyline) map.removeLayer(polyline);
             if (carMarker) map.removeLayer(carMarker);
+            if (startLineMarker) map.removeLayer(startLineMarker);
             
-            state.distance = 0;
-            state.speed = 0;
-            state.laps = 1;
-            state.lapTime = 0;
-            state.bestLap = Infinity;
-            state.isSpinning = false;
-            state.currentAngleVisual = 0;
-            state.gameStarted = false;
-            state.isPaused = true;
-            state.camLat = null;
-            state.camLng = null;
+            state.distance = 0; state.speed = 0; state.laps = 1; state.totalLaps = totalLaps; 
+            state.lapTime = 0; state.totalRaceTime = 0; state.bestLap = Infinity; 
+            state.isSpinning = false; state.currentAngleVisual = 0; state.raceFinished = false;
+            state.gameStarted = false; state.isPaused = true; state.camLat = null; state.camLng = null;
+            state.lookAheadLat = 0; state.lookAheadLng = 0; state.mach1 = false;
             resetThrottle();
             
-            lapDisplay.innerText = state.laps;
+            lapDisplay.innerText = `${state.laps} / ${state.totalLaps}`;
             timeDisplay.innerText = "00:00.000";
             bestTimeDisplay.innerText = "--:--.---";
+            resultsScreen.classList.remove('visible');
 
-            // Geração OSRM
             const numPoints = 4;
             const radius = radiusKm / 111; 
-            
             let waypoints = [];
             for(let i = 0; i < numPoints; i++) {
                 const angle = (i / numPoints) * Math.PI * 2;
@@ -650,62 +587,37 @@
             }
             waypoints.push(waypoints[0]);
 
-            const coordsString = waypoints.join(';');
-            const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordsString}?geometries=geojson&overview=full`;
-
+            const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${waypoints.join(';')}?geometries=geojson&overview=full`;
             let trackPoints = [];
             
             try {
                 const response = await fetch(osrmUrl);
                 const data = await response.json();
-                
                 if(data.routes && data.routes.length > 0) {
-                    const routeCoords = data.routes[0].geometry.coordinates;
-                    trackPoints = routeCoords.map(coord => [coord[1], coord[0]]);
-                } else {
-                    throw new Error("Rota não encontrada");
-                }
+                    trackPoints = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                } else { throw new Error("Rota não encontrada"); }
             } catch (error) {
-                console.error("Erro GPS, usando fallback:", error);
                 for (let t = 0; t <= Math.PI * 2; t += 0.1) {
                     trackPoints.push([centerLat + 0.01 * Math.cos(t), centerLng + 0.01 * Math.sin(t)]);
                 }
             }
 
             document.getElementById('loading-screen').style.opacity = '0';
-            setTimeout(() => {
-                document.getElementById('loading-screen').style.display = 'none';
-            }, 500);
+            setTimeout(() => { document.getElementById('loading-screen').style.display = 'none'; }, 500);
 
-            polyline = L.polyline(trackPoints, {
-                color: '#00f3ff', 
-                weight: 3, // Traço mais fino para ver a rua por baixo
-                opacity: 0.9,
-                lineJoin: 'round'
-            }).addTo(map);
-
-            // Ajusta inicialmente para ver o circuito todo
+            polyline = L.polyline(trackPoints, { color: '#00f3ff', weight: 3, opacity: 0.9, lineJoin: 'round' }).addTo(map);
             map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
 
-            trackSegments = [];
-            totalTrackDistance = 0;
+            trackSegments = []; totalTrackDistance = 0;
 
             for (let i = 0; i < trackPoints.length - 1; i++) {
-                let p1 = L.latLng(trackPoints[i]);
-                let p2 = L.latLng(trackPoints[i+1]);
+                let p1 = L.latLng(trackPoints[i]); let p2 = L.latLng(trackPoints[i+1]);
                 let dist = p1.distanceTo(p2); 
-                
-                // Correção da bússola geométrica:
-                // O eixo Y (Lat) precisa ser invertido porque a tela (CSS) cresce para baixo
-                let dy = p1.lat - p2.lat;
-                let dx = p2.lng - p1.lng;
-                let angle = Math.atan2(dy, dx); 
+                let dy = p1.lat - p2.lat; let dx = p2.lng - p1.lng;
                 
                 trackSegments.push({
-                    length: dist,
-                    angle: angle,
-                    lat1: p1.lat, lng1: p1.lng,
-                    lat2: p2.lat, lng2: p2.lng
+                    length: dist, angle: Math.atan2(dy, dx),
+                    lat1: p1.lat, lng1: p1.lng, lat2: p2.lat, lng2: p2.lng
                 });
                 totalTrackDistance += dist;
             }
@@ -714,120 +626,92 @@
                 let prevSeg = trackSegments[(i - 1 + trackSegments.length) % trackSegments.length];
                 let angleDiff = trackSegments[i].angle - prevSeg.angle;
                 angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
-                trackSegments[i].danger = Math.abs(angleDiff) / (trackSegments[i].length + 1); // Curvas mais punitivas
+                trackSegments[i].danger = Math.abs(angleDiff) / (trackSegments[i].length + 1); 
             }
 
+            // --- INSERÇÃO DA LINHA DE LARGADA ---
+            let startAngleDeg = trackSegments[0].angle * (180 / Math.PI);
+            const startLineIcon = L.divIcon({
+                html: `<div class="start-line" style="transform: rotate(${startAngleDeg + 90}deg);"></div>`,
+                className: '', iconSize: [8, 60], iconAnchor: [4, 30]
+            });
+            startLineMarker = L.marker(trackPoints[0], {icon: startLineIcon}).addTo(map);
+
+            // --- INSERÇÃO DO CARRO + HUD RADIAL ---
             const carIcon = L.divIcon({
-                html: `<div class="car-container"><div id="car-body"></div></div>`,
-                className: '',
-                iconSize: [30, 14],
-                iconAnchor: [15, 7]
+                html: `
+                    <div class="car-container" id="car-wrapper">
+                        <div id="car-hud">
+                            <svg viewBox="0 0 50 50" style="width: 100%; height: 100%; drop-shadow: 0 0 5px #00f3ff;">
+                                <path d="M 35 5 A 20 20 0 0 0 35 45" fill="none" stroke="rgba(0,243,255,0.2)" stroke-width="6" stroke-linecap="round"/>
+                                <path id="hud-rpm-bar" d="M 35 5 A 20 20 0 0 0 35 45" fill="none" stroke="#00f3ff" stroke-width="6" stroke-linecap="round" stroke-dasharray="62.8" stroke-dashoffset="62.8"/>
+                            </svg>
+                            <div id="hud-speed-text">0</div>
+                        </div>
+                        <div id="car-body"></div>
+                    </div>
+                `,
+                className: '', iconSize: [30, 14], iconAnchor: [15, 7]
             });
 
             carMarker = L.marker(trackPoints[0], {icon: carIcon}).addTo(map);
-            carBodyElement = null; 
+            carWrapperElement = null; hudSpeedElement = null; hudRpmBar = null;
 
-            // Alinha o carro com o primeiro segmento desde o frame 0 para não girar maluco
             state.currentAngleVisual = trackSegments.length > 0 ? trackSegments[0].angle : 0;
-
-            // INICIA A CINEMÁTICA E CONTAGEM
             runCountdown(trackPoints[0][0], trackPoints[0][1]);
         }
 
-        // --- CINEMÁTICA DE LARGADA ---
-        function sleep(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
+        function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
         async function runCountdown(startLat, startLng) {
             state.inCountdown = true;
-            
-            // Reseta semáforo
-            luz1.className = 'luz';
-            luz2.className = 'luz';
-            luz3.className = 'luz';
+            luz1.className = 'luz'; luz2.className = 'luz'; luz3.className = 'luz';
             semaforoScreen.style.display = 'flex';
 
-            // 1 seg para ver o mapa inteiro
             await sleep(1000); 
-            
-            // Luz 1
-            luz1.classList.add('red-on');
-            await sleep(1000);
-            
-            // Luz 2 e Começa o Zoom da Câmera
+            luz1.classList.add('red-on'); await sleep(1000);
             luz2.classList.add('red-on');
             map.flyTo([startLat, startLng], CAMERA_ZOOM, { duration: 2.0, easeLinearity: 0.25 });
             
-            await sleep(2000); // Aguarda o flyTo chegar
+            await sleep(2000); 
+            luz1.classList.remove('red-on'); luz2.classList.remove('red-on'); luz3.classList.add('green-on');
             
-            // Luz 3 (Verde!)
-            luz1.classList.remove('red-on');
-            luz2.classList.remove('red-on');
-            luz3.classList.add('green-on');
-            
-            state.inCountdown = false;
-            state.gameStarted = true;
-            state.isPaused = false;
-
-            await sleep(1000);
-            semaforoScreen.style.display = 'none';
+            state.inCountdown = false; state.gameStarted = true; state.isPaused = false;
+            await sleep(1000); semaforoScreen.style.display = 'none';
         }
 
-        // --- CONTROLES ANALÓGICOS (SLIDER VERTICAL) ---
+        // --- CONTROLO HORIZONTAL ---
         let isDragging = false;
-
         function resetThrottle() {
-            state.throttle = 0;
-            sliderThumb.style.bottom = '10px';
-            sliderThumb.classList.remove('dragging');
+            state.throttle = 0; sliderThumb.style.left = '10px'; sliderThumb.classList.remove('dragging');
         }
-
         function handlePointerDown(e) {
-            if (!state.gameStarted || state.isPaused || state.isSpinning) return;
-            isDragging = true;
-            sliderThumb.classList.add('dragging');
-            updateThrottle(e.clientY || e.touches[0].clientY);
+            if (!state.gameStarted || state.isPaused || state.isSpinning || state.raceFinished) return;
+            isDragging = true; sliderThumb.classList.add('dragging'); 
+            updateThrottle(e.clientX || e.touches[0].clientX);
         }
-
         function handlePointerMove(e) {
-            if (!isDragging) return;
-            // Evita scroll da tela
-            if (e.cancelable) e.preventDefault(); 
-            updateThrottle(e.clientY || (e.touches ? e.touches[0].clientY : 0));
+            if (!isDragging) return; if (e.cancelable) e.preventDefault(); 
+            updateThrottle(e.clientX || (e.touches ? e.touches[0].clientX : 0));
         }
-
-        function handlePointerUp() {
-            isDragging = false;
-            resetThrottle();
-        }
-
-        function updateThrottle(clientY) {
-            const rect = controllerArea.getBoundingClientRect();
-            // A thumb tem 70px de altura. Usamos uma margem de segurança.
-            const trackHeight = rect.height - 90; 
-            
-            // y é a distância em pixels partindo de baixo
-            let y = rect.bottom - 45 - clientY; 
-            
-            y = Math.max(0, Math.min(y, trackHeight));
-            state.throttle = y / trackHeight; // Valor analógico 0.0 a 1.0
-            
-            // Atualiza o visual
-            sliderThumb.style.bottom = (y + 10) + 'px';
-        }
-
-        // Mouse Events
-        controllerArea.addEventListener('mousedown', handlePointerDown);
-        window.addEventListener('mousemove', handlePointerMove);
-        window.addEventListener('mouseup', handlePointerUp);
+        function handlePointerUp() { isDragging = false; resetThrottle(); }
         
-        // Touch Events
+        function updateThrottle(clientX) {
+            const rect = controllerArea.getBoundingClientRect();
+            const trackWidth = rect.width - 90; // Respeita a largura do thumb e padding interior
+            let x = clientX - rect.left - 45; // Centro do gatilho
+            x = Math.max(0, Math.min(x, trackWidth));
+            state.throttle = x / trackWidth; 
+            sliderThumb.style.left = (x + 10) + 'px';
+        }
+
+        controllerArea.addEventListener('mousedown', handlePointerDown);
+        window.addEventListener('mousemove', handlePointerMove); 
+        window.addEventListener('mouseup', handlePointerUp);
         controllerArea.addEventListener('touchstart', handlePointerDown, {passive: false});
         window.addEventListener('touchmove', handlePointerMove, {passive: false});
-        window.addEventListener('touchend', handlePointerUp);
+        window.addEventListener('touchend', handlePointerUp); 
         window.addEventListener('touchcancel', handlePointerUp);
-
 
         // --- LOOP PRINCIPAL DO JOGO ---
         let lastTime = 0;
@@ -840,17 +724,18 @@
             if (dt > 0.1) dt = 0.1; 
 
             if (state.isPaused || !state.gameStarted) {
-                requestAnimationFrame(update);
-                return;
+                requestAnimationFrame(update); return;
             }
 
-            if (!carBodyElement) {
-                carBodyElement = document.getElementById('car-body');
+            if (!carWrapperElement) {
+                carWrapperElement = document.getElementById('car-wrapper');
+                hudSpeedElement = document.getElementById('hud-speed-text');
+                hudRpmBar = document.getElementById('hud-rpm-bar');
             }
 
-            // Cronômetro da volta
-            if (!state.inCountdown) {
+            if (!state.inCountdown && !state.raceFinished) {
                 state.lapTime += dt * 1000;
+                state.totalRaceTime += dt * 1000;
                 timeDisplay.innerText = formatLapTime(state.lapTime);
             }
 
@@ -859,40 +744,34 @@
                 state.spinVelocity -= FRICTION * 2 * dt; 
                 state.spinVelocity = Math.max(0, state.spinVelocity);
 
-                // Desliza o carro para fora alongando a tangente da curva
                 state.spinLat += state.spinDirLat * state.spinVelocity * dt;
                 state.spinLng += state.spinDirLng * state.spinVelocity * dt;
 
                 carMarker.setLatLng([state.spinLat, state.spinLng]);
 
-                // --- Câmera projetada (Look-Ahead) enquanto patina ---
-                let lookAheadMeters = (state.speed / MAX_SPEED) * 80;
-                let targetCamLat = state.spinLat + state.spinDirLat * lookAheadMeters;
-                let targetCamLng = state.spinLng + state.spinDirLng * lookAheadMeters;
+                let lookAheadMeters = (state.speed / MAX_SPEED) * 120;
+                let targetOffsetLat = state.spinDirLat * lookAheadMeters;
+                let targetOffsetLng = state.spinDirLng * lookAheadMeters;
                 
-                if (!state.camLat) state.camLat = state.spinLat;
-                if (!state.camLng) state.camLng = state.spinLng;
-                
-                // Suaviza o movimento da câmera (Lerp)
-                state.camLat += (targetCamLat - state.camLat) * dt * 5;
-                state.camLng += (targetCamLng - state.camLng) * dt * 5;
+                state.lookAheadLat += (targetOffsetLat - state.lookAheadLat) * dt * 2.5;
+                state.lookAheadLng += (targetOffsetLng - state.lookAheadLng) * dt * 2.5;
+
+                state.camLat = state.spinLat + state.lookAheadLat;
+                state.camLng = state.spinLng + state.lookAheadLng;
 
                 map.setView([state.camLat, state.camLng], CAMERA_ZOOM, {animate: false});
 
-                // Carro gira descontrolado
                 state.currentAngleVisual += dt * 25; 
-                if (carBodyElement) {
+                if (carWrapperElement) {
                     let deg = state.currentAngleVisual * (180 / Math.PI);
-                    carBodyElement.style.transform = `rotate(${deg}deg)`;
+                    carWrapperElement.style.transform = `rotate(${deg}deg)`;
                 }
 
-                if (state.spinTimer > 1.2) { // Após 1.2s o carro é recolocado
-                    state.isSpinning = false;
-                    state.speed = 0; // Reseta velocidade para 0 (punição)
+                if (state.spinTimer > 1.2) { 
+                    state.isSpinning = false; state.speed = 0;
                 }
             } else {
-                // FÍSICA ANALÓGICA:
-                if (state.throttle > 0) {
+                if (state.throttle > 0 && !state.raceFinished) {
                     state.speed += (ACCELERATION_MAX * state.throttle - FRICTION) * dt;
                 } else {
                     state.speed -= BRAKE_FRICTION * dt;
@@ -901,25 +780,35 @@
                 state.speed = Math.max(0, Math.min(state.speed, MAX_SPEED));
                 state.distance += state.speed * dt;
 
-                // Verificação de Nova Volta
+                // --- LÓGICA DE VOLTAS E FIM DE CORRIDA ---
                 if (state.distance >= totalTrackDistance) {
                     state.distance = state.distance % totalTrackDistance;
-                    state.laps++;
-                    lapDisplay.innerText = state.laps;
-
+                    
                     if (state.lapTime < state.bestLap && state.lapTime > 1000) {
                         state.bestLap = state.lapTime;
                         bestTimeDisplay.innerText = formatLapTime(state.bestLap);
                     }
-                    state.lapTime = 0; 
+
+                    state.laps++; 
+                    if (state.laps > state.totalLaps) {
+                        // Termina a Corrida
+                        state.raceFinished = true;
+                        state.isPaused = true;
+                        resetThrottle();
+                        
+                        document.getElementById('res-laps').innerText = state.totalLaps;
+                        document.getElementById('res-best-lap').innerText = formatLapTime(state.bestLap);
+                        document.getElementById('res-total-time').innerText = formatLapTime(state.totalRaceTime);
+                        resultsScreen.classList.add('visible');
+                    } else {
+                        lapDisplay.innerText = `${state.laps} / ${state.totalLaps}`;
+                        state.lapTime = 0; 
+                    }
                 }
 
-                // Acha posição exata do carro na pista (Trilho)
-                let currDist = state.distance;
-                let segIdx = 0;
+                let currDist = state.distance; let segIdx = 0;
                 while (currDist > trackSegments[segIdx].length && segIdx < trackSegments.length - 1) {
-                    currDist -= trackSegments[segIdx].length;
-                    segIdx++;
+                    currDist -= trackSegments[segIdx].length; segIdx++;
                 }
 
                 let segment = trackSegments[segIdx];
@@ -928,63 +817,71 @@
                 let currentLat = segment.lat1 + (segment.lat2 - segment.lat1) * ratio;
                 let currentLng = segment.lng1 + (segment.lng2 - segment.lng1) * ratio;
 
-                // Move o Carrinho
                 carMarker.setLatLng([currentLat, currentLng]);
 
-                // --- CÂMERA INTELIGENTE (Look-Ahead dinâmico) ---
                 let fwdLat = segment.length > 0 ? (segment.lat2 - segment.lat1) / segment.length : 0;
                 let fwdLng = segment.length > 0 ? (segment.lng2 - segment.lng1) / segment.length : 0;
                 
-                // Câmera projeta até 80 metros para a frente baseada na velocidade atual
-                let lookAheadMeters = (state.speed / MAX_SPEED) * 80; 
-                
-                let targetCamLat = currentLat + fwdLat * lookAheadMeters;
-                let targetCamLng = currentLng + fwdLng * lookAheadMeters;
+                let lookAheadMeters = (state.speed / MAX_SPEED) * 120; 
+                let targetOffsetLat = fwdLat * lookAheadMeters;
+                let targetOffsetLng = fwdLng * lookAheadMeters;
 
-                // Inicializa a câmera se for o primeiro frame pós-largada
-                if (!state.camLat) state.camLat = currentLat;
-                if (!state.camLng) state.camLng = currentLng;
+                state.lookAheadLat += (targetOffsetLat - state.lookAheadLat) * dt * 2.5;
+                state.lookAheadLng += (targetOffsetLng - state.lookAheadLng) * dt * 2.5;
 
-                // Suaviza a transição da câmera com Lerp (evita pulos secos nas esquinas)
-                state.camLat += (targetCamLat - state.camLat) * dt * 5;
-                state.camLng += (targetCamLng - state.camLng) * dt * 5;
+                state.camLat = currentLat + state.lookAheadLat;
+                state.camLng = currentLng + state.lookAheadLng;
 
                 map.setView([state.camLat, state.camLng], CAMERA_ZOOM, {animate: false});
 
-                let centrifugalForce = (state.speed * state.speed) * segment.danger;
+                let centrifugalForce = (state.speed * Math.sqrt(state.speed)) * segment.danger;
 
-                // Descarrilamento Fluído (Roda e sai da pista)
-                if (centrifugalForce > MAX_GRIP && state.speed > 15) {
-                    state.isSpinning = true;
-                    state.spinTimer = 0;
-                    state.spinVelocity = state.speed * 0.7; // Mantém inércia
-                    
-                    // Vetor tangente para deslizar para a direção que estava indo
-                    state.spinDirLat = (segment.lat2 - segment.lat1) / segment.length;
-                    state.spinDirLng = (segment.lng2 - segment.lng1) / segment.length;
-                    
-                    state.spinLat = currentLat;
-                    state.spinLng = currentLng;
-                    
-                    isDragging = false; 
-                    resetThrottle();
+                if (centrifugalForce > MAX_GRIP && state.speed > 15 && !state.raceFinished) {
+                    state.isSpinning = true; state.spinTimer = 0; state.spinVelocity = state.speed * 0.7; 
+                    state.spinDirLat = fwdLat; state.spinDirLng = fwdLng;
+                    state.spinLat = currentLat; state.spinLng = currentLng;
+                    isDragging = false; resetThrottle();
                 }
 
-                // Rotação visual direcional colada no trilho
-                if (carBodyElement && !state.isSpinning) {
+                if (carWrapperElement && !state.isSpinning) {
                     let targetAngle = segment.angle; 
                     let diff = targetAngle - state.currentAngleVisual;
                     diff = Math.atan2(Math.sin(diff), Math.cos(diff)); 
                     
                     state.currentAngleVisual += diff * (dt * 20);
                     let deg = state.currentAngleVisual * (180 / Math.PI);
-                    carBodyElement.style.transform = `rotate(${deg}deg)`;
+                    carWrapperElement.style.transform = `rotate(${deg}deg)`;
+
+                    if (hudSpeedElement) {
+                        hudSpeedElement.style.transform = `rotate(${-deg}deg)`;
+                    }
                 }
             }
 
-            // Visor do Velocímetro
             let kmh = state.isSpinning ? 0 : Math.round(state.speed * 2.04);
-            speedDisplay.innerHTML = `${kmh} <span style="font-size:12px;">KM/H</span>`;
+            
+            if (hudSpeedElement && hudRpmBar) {
+                hudSpeedElement.innerText = kmh;
+                let fillPct = state.speed / MAX_SPEED;
+                hudRpmBar.style.strokeDashoffset = 62.8 * (1 - fillPct);
+                
+                if (kmh >= 1235) hudRpmBar.style.stroke = '#ff0055';
+                else hudRpmBar.style.stroke = '#00f3ff';
+            }
+
+            if (kmh >= 1235 && !state.mach1 && !state.raceFinished) {
+                state.mach1 = true;
+                if (carWrapperElement) carWrapperElement.classList.add('supersonic-car');
+                
+                let currentPos = carMarker.getLatLng();
+                const boomIcon = L.divIcon({ html: '<div class="sonic-boom"></div>', className: '', iconSize: [0,0] });
+                const boomMarker = L.marker([currentPos.lat, currentPos.lng], {icon: boomIcon}).addTo(map);
+                setTimeout(() => map.removeLayer(boomMarker), 600);
+
+            } else if (kmh < 1200 && state.mach1) {
+                state.mach1 = false;
+                if (carWrapperElement) carWrapperElement.classList.remove('supersonic-car');
+            }
 
             requestAnimationFrame(update);
         }
