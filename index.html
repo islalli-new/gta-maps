@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GTA Maps - Vista Aérea</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #333;
+            font-family: 'Courier New', Courier, monospace;
+            touch-action: none; /* Evita que o celular dê zoom ou puxe a tela */
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0; left: 0; z-index: 1;
+        }
+
+        /* O Carro - Ligeiramente maior para bater com a escala do mapa */
+        #car {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 14px; height: 28px; 
+            background: #d32f2f; 
+            margin-top: -14px; margin-left: -7px; 
+            border-radius: 3px; z-index: 10;
+            box-shadow: 0 8px 12px rgba(0,0,0,0.6);
+        }
+
+        #car::before {
+            content: ''; position: absolute;
+            top: 7px; left: 1px; right: 1px; height: 5px; 
+            background: #111; border-radius: 1px 1px 0 0; border-top: 1px solid #555;
+        }
+
+        #car::after {
+            content: ''; position: absolute;
+            bottom: 4px; left: 2px; right: 2px; height: 4px; 
+            background: #111; border-radius: 0 0 1px 1px;
+        }
+
+        .roof {
+            position: absolute; top: 12px; left: 2px; right: 2px; height: 9px; 
+            background: #b71c1c; border-radius: 2px;
+        }
+
+        /* O Boneco (Jogador a pé) */
+        #player {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 14px; height: 8px;
+            margin-top: -4px; margin-left: -7px;
+            z-index: 15;
+            display: none; 
+        }
+
+        #player-body {
+            position: absolute;
+            top: -1px; left: -1px;
+            width: 14px; height: 8px; 
+            background: #FFD700; 
+            border: 1px solid #000;
+            border-radius: 4px; 
+            z-index: 2; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+        }
+
+        #player-head {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 8px; height: 8px;
+            background: #111; 
+            margin-top: -4px; margin-left: -4px;
+            border-radius: 50%;
+            z-index: 3; 
+        }
+
+        .player-foot {
+            position: absolute;
+            width: 4px; height: 6px; 
+            background: #111; 
+            border-radius: 2px;
+            z-index: 1; 
+        }
+
+        #player-foot-l { left: 2px; top: 0px; }
+        #player-foot-r { right: 2px; top: 0px; }
+
+        #ui {
+            position: absolute; bottom: 20px; right: 20px;
+            background: rgba(0, 0, 0, 0.8); color: #0f0;
+            padding: 15px; border: 2px solid #0f0; border-radius: 10px;
+            z-index: 20; text-align: right; user-select: none;
+            transition: border-color 0.3s ease, opacity 0.5s ease; 
+        }
+
+        #speedometer { font-size: 32px; font-weight: bold; }
+
+        #reputation-ui {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(0, 0, 0, 0.8); color: white;
+            padding: 15px; border: 2px solid white; border-radius: 10px;
+            z-index: 20; text-align: center; user-select: none; min-width: 150px;
+            transition: border-color 0.3s ease, color 0.3s ease, opacity 0.5s ease; 
+        }
+
+        #survival-score { font-size: 28px; font-weight: bold; }
+        #stars-container { font-size: 24px; margin-top: 5px; letter-spacing: 2px; }
+        .star { color: #555; transition: color 0.3s ease; }
+        .star.active { color: #FFD700; text-shadow: 0 0 5px #FFD700; }
+
+        /* Barra de Fôlego (Stamina) */
+        #stamina-bar-container {
+            width: 100%; height: 6px; background: #555; border-radius: 3px; 
+            margin-top: 10px; overflow: hidden; display: none;
+        }
+        #stamina-bar {
+            width: 100%; height: 100%; background: #2196F3; 
+            transition: width 0.1s linear, background-color 0.3s;
+        }
+
+        #location-display {
+            margin-top: 15px; padding-top: 10px; border-top: 1px solid #555;
+            text-transform: uppercase; letter-spacing: 1px; line-height: 1.4;
+            max-width: 160px; margin-left: auto; margin-right: auto;
+        }
+        #loc-neighborhood {
+            font-weight: bold; color: #fff; font-size: 13px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+        }
+        #loc-city-state {
+            font-size: 11px; color: #ccc; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis; margin-top: 2px;
+        }
+
+        /* NOVO: Ajuste do painel de instruções e botões embutidos */
+        #instructions {
+            position: absolute; bottom: 20px; left: 20px;
+            background: rgba(0, 0, 0, 0.8); color: white;
+            padding: 15px; border-radius: 10px; z-index: 20; user-select: none;
+            transition: opacity 0.5s ease;
+            pointer-events: auto; 
+        }
+
+        .instruction-buttons {
+            display: flex; gap: 10px; margin-top: 15px; border-top: 1px solid #555; padding-top: 15px;
+        }
+
+        .inst-btn {
+            background: rgba(255, 255, 255, 0.1); color: white;
+            border: 1px solid white; border-radius: 5px;
+            padding: 8px 12px; font-size: 14px; cursor: pointer;
+            display: flex; justify-content: center; align-items: center; gap: 5px;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .inst-btn:active { transform: scale(0.95); background: rgba(255, 255, 255, 0.3); }
+
+        kbd {
+            background: #eee; color: #333; padding: 2px 6px;
+            border-radius: 3px; font-family: sans-serif; font-size: 14px;
+        }
+
+        /* Removido o CSS dos controlos Touch antigos (Manche e Botões) */
+
+        #game-title {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            color: #fff; font-size: 48px; font-weight: 900; font-family: Impact, sans-serif;
+            text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            z-index: 30; pointer-events: none; letter-spacing: 3px; font-style: italic;
+            transition: opacity 0.5s ease;
+        }
+
+        #search-container {
+            position: absolute; top: 85px; left: 50%; transform: translateX(-50%);
+            z-index: 30; display: flex; gap: 5px;
+            background: rgba(0,0,0,0.7); padding: 10px; border-radius: 8px;
+            transition: opacity 0.5s ease;
+        }
+
+        #address-input { padding: 8px; font-size: 16px; width: 220px; border: none; border-radius: 4px; outline: none; }
+        #search-btn { padding: 8px 15px; font-size: 16px; cursor: pointer; background: #d32f2f; color: white; border: none; border-radius: 4px; font-weight: bold; transition: background 0.2s; }
+        #search-btn:hover { background: #b71c1c; }
+
+        @media (max-width: 600px) {
+            #game-title { font-size: 32px; top: 10px; }
+            #search-container { top: 60px; }
+            #address-input { width: 150px; }
+            #reputation-ui { transform: scale(0.8); transform-origin: top right; }
+            /* Ajustes finos para Mobile */
+            #ui { transform: scale(0.8); transform-origin: bottom right; right: 10px; bottom: 10px; }
+            #instructions { font-size: 11px; bottom: 10px; left: 10px; padding: 10px; }
+            .inst-btn { padding: 6px 8px; font-size: 12px; }
+        }
+
+        #car-smoke {
+            position: absolute; bottom: -10px; left: 50%;
+            width: 8px; height: 8px; background: #333; border-radius: 50%;
+            z-index: 5; display: none;
+        }
+
+        .smoking { display: block !important; animation: smoke-anim 0.6s linear infinite; }
+        @keyframes smoke-anim {
+            0% { transform: translateX(-50%) scale(1); opacity: 0.8; bottom: -10px; }
+            100% { transform: translateX(-50%) scale(4); opacity: 0; bottom: -30px; }
+        }
+
+        #loading-text {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 32px;
+            font-weight: bold;
+            font-family: 'Courier New', Courier, monospace;
+            text-shadow: 2px 2px 5px #000;
+            z-index: 200;
+            display: none; 
+            pointer-events: none;
+            letter-spacing: 2px;
+            animation: blink 1s infinite alternate;
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; }
+            100% { opacity: 0.3; }
+        }
+
+        #thought-bubble {
+            position: absolute;
+            top: 35%;
+            left: 55%;
+            background: white;
+            color: black;
+            padding: 10px 15px;
+            border-radius: 15px;
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif;
+            font-weight: bold;
+            font-size: 14px;
+            z-index: 25;
+            display: none;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.5);
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+        }
+        #thought-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 20px;
+            border-width: 8px 8px 0 0;
+            border-style: solid;
+            border-color: white transparent transparent transparent;
+        }
+
+        #wasted-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.75); display: none; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 100;
+        }
+
+        #wasted-text {
+            color: #d32f2f; font-size: 80px; font-weight: 900; font-family: Impact, sans-serif;
+            text-shadow: 4px 4px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+            letter-spacing: 5px; margin-bottom: 5px; text-align: center;
+        }
+        
+        #wasted-reason {
+            color: #fff; font-size: 20px; font-family: sans-serif;
+            margin-bottom: 25px; text-transform: uppercase; font-weight: bold; text-align: center;
+        }
+
+        #wasted-score-display { color: white; font-size: 28px; font-family: sans-serif; margin-bottom: 40px; text-shadow: 2px 2px 0 #000; }
+        #restart-btn { padding: 15px 30px; font-size: 24px; cursor: pointer; background: #d32f2f; color: white; border: none; border-radius: 5px; font-weight: bold; font-family: sans-serif; transition: background 0.2s, transform 0.1s; }
+        #restart-btn:hover { background: #b71c1c; }
+        #restart-btn:active { transform: scale(0.95); }
+    </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <div id="car">
+        <div class="roof"></div>
+        <div id="car-smoke"></div> 
+    </div>
+
+    <div id="thought-bubble"></div>
+    <div id="loading-text">CARREGANDO MAPA...</div>
+
+    <div id="player">
+        <div id="player-foot-l" class="player-foot"></div>
+        <div id="player-foot-r" class="player-foot"></div>
+        <div id="player-body"></div> 
+        <div id="player-head"></div>
+    </div>
+
+    <!-- Interface Superior -->
+    <div id="game-title">GTA MAPS</div>
+
+    <div id="search-container">
+        <input type="text" id="address-input" placeholder="Onde quer dirigir?">
+        <button id="search-btn">Buscar</button>
+    </div>
+
+    <!-- Instruções (Dinâmicas via JS) e Botões Integrados -->
+    <div id="instructions">
+        <div id="instructions-text">
+            <h3 style="margin-top:0">TECLADO</h3>
+            <p><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> : Mover</p>
+            <p><kbd>Shift</kbd> : Acelerar+</p>
+            <p><kbd>Espaço</kbd> : Entrar/Sair</p>
+        </div>
+        <div class="instruction-buttons">
+            <button id="btn-fullscreen" class="inst-btn" title="Tela Cheia">⛶ Tela Cheia</button>
+            <button id="btn-control-toggle" class="inst-btn" title="Alternar Controles">⌨️ Teclado</button>
+        </div>
+    </div>
+
+    <div id="wasted-screen">
+        <div id="wasted-text">WASTED</div>
+        <div id="wasted-reason"></div>
+        <div id="wasted-score-display">Sobrevivência: <span id="final-score">0</span></div>
+        <button id="restart-btn">Tentar Novamente</button>
+    </div>
+
+    <div id="reputation-ui">
+        <div>SOBREVIVÊNCIA</div>
+        <div id="survival-score">0</div>
+        <div id="stars-container">
+            <span class="star" id="star-1">★</span>
+            <span class="star" id="star-2">★</span>
+            <span class="star" id="star-3">★</span>
+            <span class="star" id="star-4">★</span>
+            <span class="star" id="star-5">★</span>
+        </div>
+        <div id="stamina-bar-container">
+            <div id="stamina-bar"></div>
+        </div>
+        <div id="location-display">
+            <div id="loc-neighborhood">📍 GPS...</div>
+            <div id="loc-city-state">Conectando</div>
+        </div>
+    </div>
+
+    <div id="ui">
+        <div id="speedometer">0</div>
+        <div>km/h</div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        let map;
+        const carElement = document.getElementById('car');
+        const playerElement = document.getElementById('player');
+        const speedElement = document.getElementById('speedometer');
+        const instructionsElement = document.getElementById('instructions');
+        const titleElement = document.getElementById('game-title');
+        const searchElement = document.getElementById('search-container');
+        const uiElement = document.getElementById('ui');
+        const repUiElement = document.getElementById('reputation-ui');
+        const survivalScoreElement = document.getElementById('survival-score');
+        const wastedScreenElement = document.getElementById('wasted-screen');
+        const wastedReasonElement = document.getElementById('wasted-reason');
+        const finalScoreElement = document.getElementById('final-score');
+        const restartBtnElement = document.getElementById('restart-btn');
+        const carSmokeElement = document.getElementById('car-smoke'); 
+        const locNeighElement = document.getElementById('loc-neighborhood');
+        const locCityStateElement = document.getElementById('loc-city-state');
+        const staminaBarContainer = document.getElementById('stamina-bar-container');
+        const staminaBar = document.getElementById('stamina-bar');
+        const thoughtBubbleElement = document.getElementById('thought-bubble');
+        const loadingTextElement = document.getElementById('loading-text');
+        const instructionsText = document.getElementById('instructions-text');
+
+        // Lógica de Tela Cheia
+        const btnFullscreen = document.getElementById('btn-fullscreen');
+        btnFullscreen.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.warn(`Erro ao tentar tela cheia: ${err.message}`);
+                });
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        });
+
+        // Lógica de Alternância de Controles (Teclado vs Tela)
+        const btnControlToggle = document.getElementById('btn-control-toggle');
+        let isTouchMode = false;
+        let touchState = { left: false, right: false, sprint: false, touches: 0 };
+        let autoAccelBlockUntil = 0; // Controle de delay pós-freio
+
+        const textKeyboard = `
+            <h3 style="margin-top:0">TECLADO</h3>
+            <p><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> : Mover</p>
+            <p><kbd>Shift</kbd> : Acelerar+</p>
+            <p><kbd>Espaço</kbd> : Entrar/Sair</p>
+        `;
+
+        const textTouch = `
+            <h3 style="margin-top:0">TELA (AUTO)</h3>
+            <p>👈 Lado Esq. : Vira p/ Esquerda</p>
+            <p>👉 Lado Dir. : Vira p/ Direita</p>
+            <p>👈+👉 Ambos : Frear / Ré</p>
+            <p>👆 Topo Tela : Correr / Turbo</p>
+            <p>✌️ Toque Duplo : Sair (2 Dedos)</p>
+        `;
+
+        btnControlToggle.addEventListener('click', () => {
+            isTouchMode = !isTouchMode;
+            btnControlToggle.innerHTML = isTouchMode ? '📱 Celular' : '⌨️ Teclado';
+            instructionsText.innerHTML = isTouchMode ? textTouch : textKeyboard;
+            
+            for(let k in keys) keys[k] = false;
+            touchState = { left: false, right: false, sprint: false, touches: 0 };
+        });
+
+        const keys = {
+            ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, Space: false, Shift: false
+        };
+
+        // Configuração Controles Mobile (Sistema PAKO com Auto-Acelerar)
+        let lastTwoFingerTap = 0;
+
+        function handleTouch(e) {
+            if (!isTouchMode) return; // Só funciona se o botão de modo tela estiver ativo
+            
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+
+            if (e.cancelable && e.type !== 'touchend' && e.type !== 'touchcancel') {
+                e.preventDefault(); 
+            }
+
+            let previousTouches = touchState.touches;
+            let touches = e.touches;
+            touchState.touches = touches.length;
+
+            // NOVO: Aplica o delay de segurança ao soltar o freio antes de voltar a acelerar
+            if (previousTouches > 0 && touchState.touches === 0) {
+                autoAccelBlockUntil = Date.now() + 400; 
+            }
+
+            touchState.left = false;
+            touchState.right = false;
+            touchState.sprint = false;
+
+            if (e.type === 'touchstart' && touches.length === 2) {
+                let now = Date.now();
+                if (now - lastTwoFingerTap < 500) {
+                    handleSpacebar();
+                    lastTwoFingerTap = 0; 
+                } else {
+                    lastTwoFingerTap = now;
+                }
+            }
+
+            for (let i = 0; i < touches.length; i++) {
+                let t = touches[i];
+                if (t.clientX < window.innerWidth / 2) touchState.left = true;
+                else touchState.right = true;
+
+                if (t.clientY < window.innerHeight * 0.5) touchState.sprint = true;
+            }
+        }
+
+        window.addEventListener('touchstart', handleTouch, {passive: false});
+        window.addEventListener('touchmove', handleTouch, {passive: false});
+        window.addEventListener('touchend', handleTouch, {passive: false});
+        window.addEventListener('touchcancel', handleTouch, {passive: false});
+
+        // Animação do Boneco
+        const footL = document.getElementById('player-foot-l');
+        const footR = document.getElementById('player-foot-r');
+        let walkCycle = 0; 
+
+        let lat = -23.561414;
+        let lng = -46.656403;
+
+        let speed = 0;
+        let angle = 0; 
+        
+        let isDriving = true;
+        let carLat = 0, carLng = 0, carAngle = 0;
+        let autoWalkToCar = false;
+
+        const acceleration = 0.04; 
+        const friction = 0.97; 
+        const turnSpeed = 3.5; 
+
+        let reputation = 1000;
+        let survivalScore = 0; 
+        let maxHealth = 100;
+        let health = maxHealth;
+        let isWasted = false;
+
+        const maxStamina = 1800; 
+        let stamina = maxStamina;
+        let isExhausted = false;
+
+        let currentInfraction = 'none';
+        let infractionFrames = 0;
+        const MAX_INFRACTION_FRAMES = 120; 
+        let isHitFlashing = false; 
+
+        let buildingPolygons = [];
+        let roadSegments = [];
+        let envCenterLat = 0;
+        let envCenterLng = 0;
+        let isFetchingEnvironment = false; 
+        let isSpawning = false; 
+
+        let lastGeoLat = 0;
+        let lastGeoLng = 0;
+
+        async function updateLocationName(currentLat, currentLng) {
+            try {
+                const res = await fetch(`https://photon.komoot.io/reverse?lon=${currentLng}&lat=${currentLat}`);
+                const data = await res.json();
+                if (data && data.features && data.features.length > 0) {
+                    const props = data.features[0].properties;
+                    let neighborhood = props.district || props.suburb || props.neighbourhood || props.locality || props.name || "Área Desconhecida";
+                    let city = props.city || props.town || props.village || props.county || "";
+                    let state = props.state || "";
+
+                    locNeighElement.innerText = "📍 " + neighborhood;
+
+                    let cityStateParts = [];
+                    if (city && city !== neighborhood) cityStateParts.push(city);
+                    if (state) cityStateParts.push(state);
+                    
+                    locCityStateElement.innerText = cityStateParts.join(' - ');
+                }
+            } catch (e) {
+                console.warn("Erro ao buscar nome do local");
+            }
+        }
+
+        function checkCarVisuals() {
+            if (health <= 20 && health > 0) {
+                carSmokeElement.classList.add('smoking');
+            } else {
+                carSmokeElement.classList.remove('smoking');
+            }
+        }
+
+        function triggerWasted(reason = "") {
+            isWasted = true;
+            speed = 0;
+            autoWalkToCar = false;
+            thoughtBubbleElement.style.display = 'none'; 
+            infractionFrames = 0;
+            
+            if (isDriving) {
+                carSmokeElement.classList.remove('smoking'); 
+                carElement.style.background = "#222";
+                carElement.style.boxShadow = "0 0 50px 30px #ff5722";
+            } else {
+                document.getElementById('player-body').style.background = "#f44336"; 
+            }
+            
+            wastedReasonElement.innerText = reason;
+            finalScoreElement.innerText = Math.floor(survivalScore);
+            wastedScreenElement.style.display = "flex";
+        }
+
+        async function spawnPlayer(targetLat, targetLng) {
+            isSpawning = true;
+            
+            loadingTextElement.style.display = 'block';
+            
+            carElement.style.display = 'none';
+            playerElement.style.display = 'none';
+            uiElement.style.opacity = '0';
+            repUiElement.style.opacity = '0';
+            searchElement.style.opacity = '0';
+            instructionsElement.style.opacity = '0';
+            titleElement.style.opacity = '0';
+            instructionsElement.style.pointerEvents = 'none';
+
+            if (map) {
+                map.setView([targetLat, targetLng], 13, { animate: false });
+            }
+
+            await loadEnvironment(targetLat, targetLng, true);
+
+            loadingTextElement.style.display = 'none';
+
+            if (map) {
+                map.flyTo([lat, lng], 20, { animate: true, duration: 2.5 });
+                
+                setTimeout(() => {
+                    speed = 0;
+                    angle = 0;
+                    isDriving = true;
+                    autoWalkToCar = false;
+                    health = maxHealth; 
+                    
+                    carElement.style.display = 'block';
+                    uiElement.style.opacity = '1';
+                    repUiElement.style.opacity = '1';
+                    searchElement.style.opacity = '1';
+                    instructionsElement.style.opacity = '1'; 
+                    titleElement.style.opacity = '1';
+                    instructionsElement.style.pointerEvents = 'auto';
+                    
+                    for(let k in keys) keys[k] = false;
+                    
+                    isSpawning = false; 
+                }, 2600);
+            }
+        }
+
+        function handleSpacebar() {
+            if (isWasted) return;
+            
+            if (isDriving) {
+                const displaySpeed = Math.abs(Math.round(speed * 200));
+                if (displaySpeed > 10) {
+                    triggerWasted("SAIU DO CARRO EM MOVIMENTO!");
+                } else {
+                    isDriving = false;
+                    carLat = lat; carLng = lng; carAngle = angle;
+                    thoughtBubbleElement.style.display = 'none'; 
+                    infractionFrames = 0;
+                    
+                    let leftAngleRad = (angle - 90) * Math.PI / 180;
+                    lat += (1.5 * Math.cos(leftAngleRad)) / 111320;
+                    lng += (1.5 * Math.sin(leftAngleRad)) / (111320 * Math.cos(lat * Math.PI / 180));
+                    speed = 0;
+                }
+            } else {
+                autoWalkToCar = true;
+            }
+        }
+
+        function initMap() {
+            map = L.map('map', {
+                zoomControl: false, keyboard: false, dragging: false,
+                scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false,
+                touchZoom: false, tap: false // NOVO: Desativa os toques automáticos do Leaflet
+            }).setView([lat, lng], 13); 
+
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri', maxZoom: 22, maxNativeZoom: 19   
+            }).addTo(map);
+
+            requestAnimationFrame(gameLoop);
+            spawnPlayer(lat, lng); 
+            checkCarVisuals();
+        }
+
+        async function startUp() {
+            try {
+                const res = await fetch('https://get.geojs.io/v1/ip/geo.json');
+                const data = await res.json();
+                if (data.latitude && data.longitude) {
+                    lat = parseFloat(data.latitude);
+                    lng = parseFloat(data.longitude);
+                }
+            } catch (err) { }
+            initMap();
+        }
+
+        window.onload = startUp;
+
+        function toMeters(pLat, pLng) {
+            const x = (pLng - envCenterLng) * 111320 * Math.cos(envCenterLat * Math.PI / 180);
+            const y = (pLat - envCenterLat) * 111320;
+            return { x, y };
+        }
+
+        function sqr(x) { return x * x; }
+        function dist2(v, w) { return sqr(v.x - w.x) + sqr(v.y - w.y); }
+        function distToSegmentSquared(p, v, w) {
+            let l2 = dist2(v, w);
+            if (l2 === 0) return dist2(p, v);
+            let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return dist2(p, { x: v.x + t * (w.x - v.x), y: v.y + t * (w.y - v.y) });
+        }
+        function distToSegment(p, v, w) { return Math.sqrt(distToSegmentSquared(p, v, w)); }
+
+        function isPointInPolygon(point, vs) {
+            let x = point[0], y = point[1];
+            let inside = false;
+            for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+                let xi = vs[i][0], yi = vs[i][1];
+                let xj = vs[j][0], yj = vs[j][1];
+                let intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+
+        async function loadEnvironment(centerLat, centerLng, snapToRoad = false) {
+            if (isFetchingEnvironment) return; 
+            isFetchingEnvironment = true;
+
+            const radius = 600; 
+            const query = `[out:json];
+            (
+              way["building"](around:${radius},${centerLat},${centerLng});
+              way["highway"]["highway"!~"footway|pedestrian|path|steps"](around:${radius},${centerLat},${centerLng});
+            );
+            out tags geom;`;
+            
+            const url = `https://overpass-api.de/api/interpreter`;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `data=${encodeURIComponent(query)}`
+                });
+                
+                const textData = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(textData);
+                } catch (parseError) {
+                    isFetchingEnvironment = false;
+                    return; 
+                }
+
+                if (data && data.elements) {
+                    buildingPolygons = [];
+                    roadSegments = [];
+                    envCenterLat = centerLat;
+                    envCenterLng = centerLng;
+
+                    if (snapToRoad) {
+                        for (let el of data.elements) {
+                            if (el.type === "way" && el.tags && el.tags.highway && el.geometry && el.geometry.length > 0) {
+                                lat = el.geometry[0].lat;
+                                lng = el.geometry[0].lon;
+                                break;
+                            }
+                        }
+                    }
+
+                    data.elements.forEach(el => {
+                        if (el.type === "way" && el.geometry) {
+                            if (el.tags && el.tags.building) {
+                                const polyForMath = el.geometry.map(g => [g.lon, g.lat]); 
+                                buildingPolygons.push(polyForMath);
+                            } else if (el.tags && el.tags.highway) {
+                                let isOneway = 0;
+                                if (el.tags.oneway === "yes" || el.tags.oneway === "1" || el.tags.oneway === "true") isOneway = 1;
+                                if (el.tags.oneway === "-1") isOneway = -1;
+                                let isHighway = /motorway|trunk/i.test(el.tags.highway);
+
+                                for (let i = 0; i < el.geometry.length - 1; i++) {
+                                    let p1 = el.geometry[i];
+                                    let p2 = el.geometry[i+1];
+                                    roadSegments.push({
+                                        v: toMeters(p1.lat, p1.lon), w: toMeters(p2.lat, p2.lon), oneway: isOneway, isHighway: isHighway
+                                    });
+                                }
+                            }
+                        }
+                    });
+                }
+            } catch (err) {}
+            isFetchingEnvironment = false; 
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (document.activeElement.tagName === 'INPUT') return;
+            
+            if (e.key === 'Shift') keys.Shift = true;
+
+            if (e.code === 'Space') {
+                e.preventDefault(); 
+                if (!keys.Space) { keys.Space = true; handleSpacebar(); }
+            } else if (keys.hasOwnProperty(e.key)) {
+                keys[e.key] = true;
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'Shift') keys.Shift = false;
+
+            if (e.code === 'Space') {
+                keys.Space = false;
+            } else if (keys.hasOwnProperty(e.key)) {
+                keys[e.key] = false;
+            }
+        });
+
+        restartBtnElement.addEventListener('click', () => {
+            isWasted = false;
+            reputation = 1000;
+            survivalScore = 0;
+            stamina = maxStamina;
+            isExhausted = false;
+            infractionFrames = 0;
+            currentInfraction = 'none';
+            
+            wastedScreenElement.style.display = "none";
+            wastedReasonElement.innerText = "";
+            
+            carElement.style.background = "#d32f2f";
+            carElement.style.boxShadow = "0 8px 12px rgba(0,0,0,0.6)";
+            document.getElementById('player-body').style.background = "#FFD700";
+            checkCarVisuals();
+
+            spawnPlayer(lat, lng);
+            
+            requestAnimationFrame(gameLoop);
+        });
+
+        document.getElementById('search-btn').addEventListener('click', () => {
+            const query = document.getElementById('address-input').value;
+            if (!query) return;
+
+            const btn = document.getElementById('search-btn');
+            btn.innerText = '...'; 
+
+            fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`)
+                .then(response => response.json())
+                .then(data => {
+                    btn.innerText = 'Buscar';
+                    if (data && data.features && data.features.length > 0) {
+                        let newLat = parseFloat(data.features[0].geometry.coordinates[1]);
+                        let newLng = parseFloat(data.features[0].geometry.coordinates[0]);
+                        spawnPlayer(newLat, newLng); 
+                    } else {
+                        const oldText = btn.innerText;
+                        btn.innerText = 'Não achou!';
+                        setTimeout(() => btn.innerText = oldText, 2000);
+                    }
+                })
+                .catch(err => {
+                    btn.innerText = 'Erro';
+                    setTimeout(() => btn.innerText = 'Buscar', 2000);
+                });
+        });
+
+        function gameLoop() {
+            if (isWasted) return;
+
+            if (isSpawning) {
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            // Sobreposição de controles quando no Modo Tela (Auto-acelerar)
+            if (isTouchMode && !autoWalkToCar) {
+                if (touchState.touches === 0) {
+                    if (Date.now() > autoAccelBlockUntil) {
+                        keys.ArrowUp = true; // AUTO-ACELERAÇÃO CONTÍNUA
+                    } else {
+                        keys.ArrowUp = false; // Segura a aceleração por meio segundo ao soltar os dedos
+                    }
+                    keys.ArrowDown = false;
+                    keys.ArrowLeft = false;
+                    keys.ArrowRight = false;
+                    keys.Shift = false;
+                } else if (touchState.left && touchState.right) {
+                    keys.ArrowUp = false;
+                    keys.ArrowDown = true; // Freia/Ré com dois lados apertados
+                    keys.ArrowLeft = false;
+                    keys.ArrowRight = false;
+                    keys.Shift = false;
+                } else {
+                    keys.ArrowUp = true; // Continua a acelerar enquanto curva
+                    keys.ArrowDown = false;
+                    keys.ArrowLeft = touchState.left;
+                    keys.ArrowRight = touchState.right;
+                    keys.Shift = touchState.sprint; // Turbo se tocou na metade superior
+                }
+            }
+
+            if (!isFetchingEnvironment && envCenterLat !== 0) {
+                let distToCenter = Math.sqrt(Math.pow((lat - envCenterLat) * 111320, 2) + Math.pow((lng - envCenterLng) * 111320 * Math.cos(envCenterLat * Math.PI / 180), 2));
+                if (distToCenter > 350) loadEnvironment(lat, lng);
+            }
+
+            let distSinceLastGeo = Math.sqrt(Math.pow((lat - lastGeoLat) * 111320, 2) + Math.pow((lng - lastGeoLng) * 111320 * Math.cos(lat * Math.PI / 180), 2));
+            if (lastGeoLat === 0 || distSinceLastGeo > 150) {
+                lastGeoLat = lat; lastGeoLng = lng; updateLocationName(lat, lng);
+            }
+
+            let carMeters = toMeters(lat, lng);
+            let onRoad = false;
+            let closestSeg = null;
+            let minDist = Infinity;
+            const roadWidth = 12; 
+            
+            if (roadSegments.length > 0) {
+                for (let seg of roadSegments) {
+                    let d = distToSegment(carMeters, seg.v, seg.w);
+                    if (d < minDist) { minDist = d; closestSeg = seg; }
+                }
+                if (minDist < roadWidth) onRoad = true;
+            } else { onRoad = true; }
+
+            let currentMaxSpeed, currentFriction, currentTurnSpeed, currentAccel;
+            let statusColor = "white";
+            let isSprinting = false;
+
+            let baseRoadLimit = onRoad && closestSeg ? (closestSeg.isHighway ? 1.0 : 0.5) : 0.2; 
+
+            if (isDriving) {
+                let damageMultiplier = (health <= 20) ? 0.5 : 1.0;
+
+                if (keys.Shift) {
+                    currentMaxSpeed = 1.1 * damageMultiplier; 
+                } else {
+                    currentMaxSpeed = baseRoadLimit * damageMultiplier; 
+                }
+                
+                currentFriction = onRoad ? friction : 0.82; 
+                currentTurnSpeed = onRoad ? turnSpeed : turnSpeed * 0.6;
+                currentAccel = (keys.Shift ? acceleration * 1.5 : acceleration) * damageMultiplier; 
+                
+                staminaBarContainer.style.display = 'none'; 
+
+            } else {
+                let isMoving = keys.ArrowUp || keys.ArrowDown || keys.ArrowLeft || keys.ArrowRight;
+                staminaBarContainer.style.display = 'block';
+
+                if (keys.Shift && !isExhausted && isMoving) {
+                    isSprinting = true;
+                    currentMaxSpeed = 0.15; 
+                    stamina -= 1; 
+                    if (stamina <= 0) {
+                        stamina = 0;
+                        isExhausted = true;
+                    }
+                } else {
+                    isSprinting = false;
+                    currentMaxSpeed = 0.075; 
+                    if (!isMoving) {
+                        stamina += 6; 
+                    } else {
+                        stamina += 3; 
+                    }
+                    if (stamina >= maxStamina) {
+                        stamina = maxStamina;
+                        isExhausted = false;
+                    }
+                }
+
+                staminaBar.style.width = (stamina / maxStamina * 100) + '%';
+                staminaBar.style.backgroundColor = isExhausted ? '#f44336' : '#2196F3';
+
+                currentFriction = 0.8; 
+                currentTurnSpeed = 8.0; 
+                currentAccel = isSprinting ? 0.04 : 0.02; 
+            }
+
+            let isOffRoad = false;
+            let isWrongWay = false;
+            let isSpeeding = false;
+            let isDrivingWell = false;
+
+            if (isDriving && Math.abs(speed) > 0.05) {
+                if (!onRoad) {
+                    reputation -= 1.5; 
+                    statusColor = "#f44336"; 
+                    isOffRoad = true;
+                    
+                    health -= 0.05; 
+                    checkCarVisuals(); 
+                    if (health <= 0 && !isWasted) {
+                        triggerWasted("SUSPENSÃO DESTRUÍDA!");
+                    }
+                } else if (closestSeg) {
+                    let Rx = closestSeg.w.x - closestSeg.v.x;
+                    let Ry = closestSeg.w.y - closestSeg.v.y;
+                    let R_len = Math.sqrt(Rx*Rx + Ry*Ry);
+
+                    let radV = angle * Math.PI / 180;
+                    let Vx = Math.sin(radV) * speed;
+                    let Vy = Math.cos(radV) * speed;
+                    let V_len = Math.abs(speed);
+
+                    let Cx = carMeters.x - closestSeg.v.x;
+                    let Cy = carMeters.y - closestSeg.v.y;
+
+                    if (R_len > 0 && V_len > 0) {
+                        let dotProduct = (Rx * Vx + Ry * Vy); 
+                        let crossProduct = (Rx * Cy - Ry * Cx); 
+                        let alignment = Math.abs(dotProduct) / (R_len * V_len);
+                        
+                        if (alignment > 0.4) { 
+                            let signedDist = crossProduct / R_len; 
+                            let isMovingForward = dotProduct > 0;
+
+                            if (closestSeg.oneway !== 0) {
+                                let correctDir = closestSeg.oneway === 1 ? isMovingForward : !isMovingForward;
+                                if (correctDir) { reputation += 0.2; statusColor = "#4CAF50"; isDrivingWell = true; } 
+                                else { reputation -= 2.0; statusColor = "#f44336"; isWrongWay = true; }
+                            } else {
+                                let isRightSide = signedDist < -1.5; 
+                                let isLeftSide = signedDist > 1.5;
+                                if ((isMovingForward && isRightSide) || (!isMovingForward && isLeftSide)) {
+                                    reputation += 0.2; statusColor = "#4CAF50"; isDrivingWell = true;
+                                } else if ((isMovingForward && isLeftSide) || (!isMovingForward && isRightSide)) {
+                                    reputation -= 1.0; statusColor = "#ff9800"; isWrongWay = true;
+                                } else { statusColor = "#ffeb3b"; }
+                            }
+                        } else { statusColor = "white"; }
+                    }
+                }
+                
+                if (onRoad && Math.abs(speed) > baseRoadLimit + 0.05) {
+                    reputation -= 0.05; 
+                    statusColor = "#ff9800"; 
+                    isSpeeding = true;
+                    isDrivingWell = false; 
+                }
+            }
+
+            if (isDriving && Math.abs(speed) > 0.05) {
+                if (isOffRoad) currentInfraction = 'offroad';
+                else if (isWrongWay) currentInfraction = 'wrongway';
+                else if (isSpeeding) currentInfraction = 'speeding';
+                else currentInfraction = 'none';
+            } else {
+                currentInfraction = 'none';
+            }
+
+            if (currentInfraction !== 'none') {
+                infractionFrames++;
+                if (infractionFrames > MAX_INFRACTION_FRAMES) infractionFrames = MAX_INFRACTION_FRAMES;
+            } else {
+                infractionFrames -= 2; 
+                if (infractionFrames < 0) infractionFrames = 0;
+            }
+
+            if (!autoWalkToCar) {
+                let isTurningIntent = keys.ArrowLeft || keys.ArrowRight;
+                
+                // CORREÇÃO: O motor perde a força de aceleração nas curvas (em vez de frear o carro à força)
+                if (isDriving && isTurningIntent) {
+                    currentAccel *= 0.1; // Corta 90% da capacidade de acelerar enquanto vira
+                }
+
+                if (keys.ArrowUp) speed += currentAccel;
+                if (keys.ArrowDown) speed -= currentAccel;
+
+                speed *= currentFriction;
+
+                if (isDriving && !onRoad && Math.abs(speed) > currentMaxSpeed) { speed *= 0.85; }
+
+                if (Math.abs(speed) > 0.01) {
+                    const turnDirection = speed > 0 ? 1 : -1;
+                    let isTurning = false;
+                    if (keys.ArrowLeft) { angle -= currentTurnSpeed * turnDirection; isTurning = true; }
+                    if (keys.ArrowRight) { angle += currentTurnSpeed * turnDirection; isTurning = true; }
+                    
+                    // Removido o freio artificial que deixava a jogabilidade ruim!
+                }
+
+                if (speed > currentMaxSpeed) speed = currentMaxSpeed;
+                if (speed < -currentMaxSpeed / 2) speed = -currentMaxSpeed / 2;
+
+                // --- NOVO: EFEITO "AUTORAMA" (SNAP TO ROAD) MELHORADO ---
+                if (isDriving && onRoad && closestSeg && !isTurningIntent && Math.abs(speed) > 0.1) {
+                    let Rx = closestSeg.w.x - closestSeg.v.x;
+                    let Ry = closestSeg.w.y - closestSeg.v.y;
+                    let R_len = Math.sqrt(Rx*Rx + Ry*Ry);
+
+                    if (R_len > 0) {
+                        let radV = angle * Math.PI / 180;
+                        let Vx = Math.sin(radV);
+                        let Vy = Math.cos(radV);
+                        let dotProduct = (Rx * Vx + Ry * Vy);
+
+                        // Descobre para qual lado da reta o carro está apontando
+                        let targetRx = dotProduct > 0 ? Rx : -Rx;
+                        let targetRy = dotProduct > 0 ? Ry : -Ry;
+
+                        let targetAngle = Math.atan2(targetRx, targetRy) * 180 / Math.PI;
+
+                        // Normaliza a diferença do ângulo
+                        let diffAngle = targetAngle - angle;
+                        while (diffAngle > 180) diffAngle -= 360;
+                        while (diffAngle < -180) diffAngle += 360;
+
+                        // "ARREBENTAR O SNAP": Tolerância reduzida de 35 para 15 graus!
+                        // Se a rua virar muito forte de uma vez, o íman solta e o carro vai reto!
+                        if (Math.abs(diffAngle) < 15) { 
+                            // 1. Suaviza o volante para ficar reto (Força reduzida para 6%)
+                            // Curvas suaves dão conta, curvas fechadas não!
+                            angle += diffAngle * 0.06;
+
+                            // 2. Descobre o ponto magnético na pista (Efeito Slot Car)
+                            let l2 = R_len * R_len;
+                            let t = ((carMeters.x - closestSeg.v.x) * Rx + (carMeters.y - closestSeg.v.y) * Ry) / l2;
+                            t = Math.max(0, Math.min(1, t));
+                            
+                            let targetPx = closestSeg.v.x + t * Rx;
+                            let targetPy = closestSeg.v.y + t * Ry;
+
+                            // Se for via dupla, o trilho magnético fica na faixa da direita (2m do centro)
+                            if (closestSeg.oneway === 0) {
+                                let nx = Rx / R_len;
+                                let ny = Ry / R_len;
+                                let offsetDist = 2.0; 
+                                if (dotProduct > 0) {
+                                    targetPx += ny * offsetDist;
+                                    targetPy += -nx * offsetDist;
+                                } else {
+                                    targetPx += -ny * offsetDist;
+                                    targetPy += nx * offsetDist;
+                                }
+                            }
+
+                            // 3. Puxa o carro lateralmente para o trilho
+                            let pullFactor = 0.05 * Math.abs(speed); // Puxão magnético mais fraco para permitir "escapadas"
+                            if (pullFactor > 0.12) pullFactor = 0.12;
+                            
+                            let dX = targetPx - carMeters.x;
+                            let dY = targetPy - carMeters.y;
+                            
+                            lat += (dY * pullFactor) / 111320;
+                            lng += (dX * pullFactor) / (111320 * Math.cos(lat * Math.PI / 180));
+                        }
+                    }
+                }
+
+            } else {
+                let dLng = carLng - lng;
+                let dLat = carLat - lat;
+                let distMeters = Math.sqrt(Math.pow(dLat * 111320, 2) + Math.pow(dLng * 111320 * Math.cos(lat * Math.PI / 180), 2));
+                
+                if (distMeters < 2.0) {
+                    isDriving = true; autoWalkToCar = false;
+                    lat = carLat; lng = carLng; angle = carAngle; speed = 0;
+                } else {
+                    let targetAngleRad = Math.atan2(dLng * Math.cos(lat * Math.PI / 180), dLat);
+                    angle = targetAngleRad * 180 / Math.PI;
+                    speed = (!isExhausted && stamina > 0) ? 0.15 : 0.075; 
+                }
+            }
+
+            const rad = angle * Math.PI / 180;
+            const dLat = (speed * Math.cos(rad)) / 111320;
+            const dLng = (speed * Math.sin(rad)) / (111320 * Math.cos(lat * Math.PI / 180));
+
+            const nextLat = lat + dLat;
+            const nextLng = lng + dLng;
+
+            let hit = false;
+            for (let i = 0; i < buildingPolygons.length; i++) {
+                if (isPointInPolygon([nextLng, nextLat], buildingPolygons[i])) { hit = true; break; }
+            }
+
+            if (hit) {
+                speed = -speed * 0.4; 
+                if (isDriving) {
+                    reputation -= 5.0; health -= 10; 
+                    checkCarVisuals();
+                    if (health <= 0) {
+                        triggerWasted("CARRO DESTRUÍDO!");
+                    } else {
+                        statusColor = "#f44336";
+                        isHitFlashing = true; 
+                        carElement.style.background = "yellow";
+                        carElement.style.boxShadow = "0 0 20px 10px yellow";
+                        setTimeout(() => {
+                            isHitFlashing = false;
+                            if (!isWasted && isDriving) {
+                                carElement.style.background = "#d32f2f";
+                            }
+                        }, 150);
+                    }
+                } else { autoWalkToCar = false; }
+            } else {
+                lat = nextLat; lng = nextLng;
+            }
+
+            if (map) map.setView([lat, lng], 20, { animate: false }); 
+
+            if (isDriving) {
+                carElement.style.left = '50%'; carElement.style.top = '50%';
+                carElement.style.transform = `rotate(${angle}deg)`;
+                playerElement.style.display = 'none';
+            } else {
+                playerElement.style.display = 'block';
+                playerElement.style.transform = `rotate(${angle}deg) scale(0.8)`; 
+                
+                if (Math.abs(speed) > 0.01) {
+                    walkCycle += speed; 
+                    let footOffset = Math.sin(walkCycle * 4) * 4; 
+                    footL.style.transform = `translateY(${footOffset}px)`;
+                    footR.style.transform = `translateY(${-footOffset}px)`;
+                } else {
+                    walkCycle = 0; 
+                    footL.style.transform = `translateY(0px)`;
+                    footR.style.transform = `translateY(0px)`;
+                }
+                
+                if (map) {
+                    const carPos = map.latLngToContainerPoint([carLat, carLng]);
+                    carElement.style.left = carPos.x + 'px'; carElement.style.top = carPos.y + 'px';
+                    carElement.style.transform = `rotate(${carAngle}deg)`;
+                }
+            }
+
+            const displaySpeed = Math.abs(Math.round(speed * 200)); 
+            speedElement.innerText = displaySpeed;
+
+            if (!isHitFlashing && isDriving && !isWasted) {
+                let auraColor = "rgba(0,0,0,0.6)"; 
+                let auraShadow = "0 8px 12px"; 
+                
+                if (infractionFrames > 0) {
+                    let progress = infractionFrames / MAX_INFRACTION_FRAMES; 
+                    if (progress < 0.5) {
+                        auraColor = "rgba(255, 235, 59, 0.9)"; 
+                        auraShadow = "0 0 20px 8px";
+                    } else {
+                        auraColor = "rgba(244, 67, 54, 1.0)"; 
+                        auraShadow = "0 0 30px 10px";
+                    }
+                }
+                carElement.style.boxShadow = `${auraShadow} ${auraColor}`;
+            }
+
+            if (isDriving && infractionFrames >= 90) { 
+                thoughtBubbleElement.style.display = 'block';
+                if (currentInfraction === 'offroad') thoughtBubbleElement.innerText = "Aqui não é lugar de dirigir!";
+                else if (currentInfraction === 'wrongway') thoughtBubbleElement.innerText = "Nossa, aqui é contramão!";
+                else if (currentInfraction === 'speeding') thoughtBubbleElement.innerText = "Estou rápido demais!";
+            } else {
+                thoughtBubbleElement.style.display = 'none';
+            }
+
+            let stars = 0;
+            if (reputation < 0) stars = 5;          
+            else if (reputation < 500) stars = 4;   
+            else if (reputation < 750) stars = 3;   
+            else if (reputation < 900) stars = 2;   
+            else if (reputation < 985) stars = 1;   
+
+            for (let i = 1; i <= 5; i++) {
+                const starEl = document.getElementById(`star-${i}`);
+                if (i <= stars) starEl.classList.add('active');
+                else starEl.classList.remove('active');
+            }
+
+            if (Math.abs(speed) > 0.05) {
+                let basePoints = 0.1; 
+                let starBonus = stars * 0.05; 
+                survivalScore += (basePoints + starBonus);
+            }
+
+            survivalScoreElement.innerText = Math.floor(survivalScore);
+            repUiElement.style.borderColor = statusColor;
+
+            // FADE OUT da Interface quando está rápido (Limpa a visão do Celular)
+            if (displaySpeed !== 0 && isDriving) {
+                instructionsElement.style.opacity = '0'; 
+                titleElement.style.opacity = '0';
+                searchElement.style.opacity = '0'; 
+                searchElement.style.pointerEvents = 'none';
+                instructionsElement.style.pointerEvents = 'none';
+            } else {
+                instructionsElement.style.opacity = '1'; 
+                titleElement.style.opacity = '1';
+                searchElement.style.opacity = '1'; 
+                searchElement.style.pointerEvents = 'auto';
+                instructionsElement.style.pointerEvents = 'auto';
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+    </script>
+</body>
+</html>
