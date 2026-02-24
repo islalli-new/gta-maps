@@ -240,6 +240,39 @@
             100% { opacity: 0.3; }
         }
 
+        /* NOVO: Estilos da Polícia e Sirenes */
+        .police-car {
+            position: absolute; width: 14px; height: 28px;
+            background: #111; margin-top: -14px; margin-left: -7px;
+            border-radius: 3px; z-index: 9;
+            box-shadow: 0 8px 12px rgba(0,0,0,0.6);
+            display: none;
+        }
+        .police-car::before {
+            content: ''; position: absolute;
+            top: 7px; left: 1px; right: 1px; height: 5px;
+            background: #222; border-radius: 1px 1px 0 0; border-top: 1px solid #555;
+        }
+        .police-car::after {
+            content: ''; position: absolute;
+            bottom: 4px; left: 2px; right: 2px; height: 4px;
+            background: #222; border-radius: 0 0 1px 1px;
+        }
+        .police-roof {
+            position: absolute; top: 12px; left: 2px; right: 2px; height: 9px;
+            background: #fff; border-radius: 2px;
+        }
+        .siren {
+            position: absolute; top: 2px; left: 1px; right: 1px; height: 3px;
+            background: linear-gradient(to right, red 50%, blue 50%);
+            animation: siren-flash 0.3s infinite;
+        }
+        @keyframes siren-flash {
+            0% { box-shadow: -4px 0 10px red, 4px 0 10px blue; }
+            50% { box-shadow: -4px 0 10px blue, 4px 0 10px red; background: linear-gradient(to right, blue 50%, red 50%); }
+            100% { box-shadow: -4px 0 10px red, 4px 0 10px blue; }
+        }
+
         #thought-bubble {
             position: absolute;
             top: 35%;
@@ -539,6 +572,9 @@
         let isFetchingEnvironment = false; 
         let isSpawning = false; 
 
+        // NOVO: Variáveis do Sistema de Polícia
+        let policeCars = [];
+
         let lastGeoLat = 0;
         let lastGeoLng = 0;
 
@@ -580,6 +616,16 @@
             thoughtBubbleElement.style.display = 'none'; 
             infractionFrames = 0;
             
+            // NOVO: Tela clássica PRESO (Busted) vs WASTED
+            const wastedTextEl = document.getElementById('wasted-text');
+            if (reason === "PRESO!") {
+                wastedTextEl.innerText = "PRESO";
+                wastedTextEl.style.color = "#2196F3"; // Azul polícia
+            } else {
+                wastedTextEl.innerText = "WASTED";
+                wastedTextEl.style.color = "#d32f2f"; // Vermelho clássico
+            }
+
             if (isDriving) {
                 carSmokeElement.classList.remove('smoking'); 
                 carElement.style.background = "#222";
@@ -835,6 +881,10 @@
             document.getElementById('player-body').style.background = "#FFD700";
             checkCarVisuals();
 
+            // NOVO: Remove os carros da polícia ao reiniciar
+            policeCars.forEach(p => p.element.remove());
+            policeCars = [];
+
             spawnPlayer(lat, lng);
             
             requestAnimationFrame(gameLoop);
@@ -873,6 +923,167 @@
         let lastTime = performance.now();
         let accumulator = 0;
         const TIME_STEP = 16.666; // 60 FPS fixo na física
+
+        // NOVO: Lógica de Spawn e IA da Polícia
+        function spawnPolice() {
+            let pLat = lat;
+            let pLng = lng;
+            let pAngle = 0;
+            let foundRoad = false;
+
+            // 1. Tenta achar uma rua distante (fora da tela) para nascer
+            if (roadSegments.length > 0) {
+                // Embaralha as ruas para nascer em lugares diferentes
+                let shuffled = roadSegments.slice().sort(() => 0.5 - Math.random());
+                for (let seg of shuffled) {
+                    let midX = (seg.v.x + seg.w.x) / 2;
+                    let midY = (seg.v.y + seg.w.y) / 2;
+                    
+                    let carMeters = toMeters(lat, lng);
+                    let dist = Math.sqrt(Math.pow(midX - carMeters.x, 2) + Math.pow(midY - carMeters.y, 2));
+
+                    // Longe o suficiente para não aparecer do nada, mas perto o suficiente para perseguir
+                    if (dist > 150 && dist < 350) { 
+                        pLat = envCenterLat + (midY / 111320);
+                        pLng = envCenterLng + (midX / (111320 * Math.cos(envCenterLat * Math.PI / 180)));
+                        
+                        let rx = seg.w.x - seg.v.x;
+                        let ry = seg.w.y - seg.v.y;
+                        pAngle = Math.atan2(rx, ry) * 180 / Math.PI;
+                        foundRoad = true;
+                        break;
+                    }
+                }
+            }
+
+            // 2. Fallback: Se não achar rua, nasce num raio circular de 200m
+            if (!foundRoad) {
+                let spawnAngle = Math.random() * Math.PI * 2;
+                let spawnDist = 200; 
+                pLat = lat + (spawnDist * Math.cos(spawnAngle)) / 111320;
+                pLng = lng + (spawnDist * Math.sin(spawnAngle)) / (111320 * Math.cos(lat * Math.PI / 180));
+                pAngle = (spawnAngle * 180 / Math.PI) + 180;
+            }
+
+            let el = document.createElement('div');
+            el.className = 'police-car';
+            let roof = document.createElement('div');
+            roof.className = 'police-roof';
+            let siren = document.createElement('div');
+            siren.className = 'siren';
+            roof.appendChild(siren);
+            el.appendChild(roof);
+            document.body.appendChild(el);
+
+            policeCars.push({
+                lat: pLat, lng: pLng,
+                angle: pAngle, 
+                speed: 0.1, element: el,
+                ramCooldown: 0 // Controle de tempo entre batidas
+            });
+        }
+
+        function updatePoliceAI(stars) {
+            if (policeCars.length === 0) return;
+            
+            let basePoliceSpeed = 0.5 + (stars * 0.1); 
+            let policeAccel = 0.008 + (stars * 0.003); // Aceleração mais lenta (delay de retomada)
+
+            policeCars.forEach(p => {
+                if (p.ramCooldown > 0) p.ramCooldown--;
+
+                let dLng = lng - p.lng;
+                let dLat = lat - p.lat;
+                
+                let distToPlayer = Math.sqrt(Math.pow(dLat * 111320, 2) + Math.pow(dLng * 111320 * Math.cos(lat * Math.PI / 180), 2));
+
+                // Desaparece e reaparece se ficar muito para trás
+                if (distToPlayer > 450) {
+                    p.element.remove();
+                    policeCars = policeCars.filter(car => car !== p);
+                    return; 
+                }
+
+                let targetAngleRad = Math.atan2(dLng * Math.cos(p.lat * Math.PI / 180), dLat);
+                let targetAngle = targetAngleRad * 180 / Math.PI;
+
+                let diffAngle = targetAngle - p.angle;
+                while (diffAngle > 180) diffAngle -= 360;
+                while (diffAngle < -180) diffAngle += 360;
+
+                // IA curva suavemente (simulando peso do carro da polícia)
+                p.angle += Math.max(-3, Math.min(3, diffAngle * 0.15));
+
+                // IA acompanha a velocidade do jogador com elástico (Rubber-banding)
+                let targetSpeed = basePoliceSpeed;
+                if (distToPlayer < 40) {
+                    // Corre apenas um pouquinho mais rápido que o jogador para acompanhar
+                    targetSpeed = Math.abs(speed) + 0.02 + (stars * 0.01); 
+                } else {
+                    targetSpeed = basePoliceSpeed * 1.5; // Muito longe, tenta alcançar rápido
+                }
+
+                if (p.speed < targetSpeed) p.speed += policeAccel;
+                else p.speed -= policeAccel * 2; // Freia mais rápido se estiver muito veloz
+
+                if (p.ramCooldown > 0) {
+                    p.speed *= 0.9; // Fica zonzo (perde velocidade) logo após bater
+                }
+
+                const rad = p.angle * Math.PI / 180;
+                const pdLat = (p.speed * Math.cos(rad)) / 111320;
+                const pdLng = (p.speed * Math.sin(rad)) / (111320 * Math.cos(p.lat * Math.PI / 180));
+
+                let nextLat = p.lat + pdLat;
+                let nextLng = p.lng + pdLng;
+
+                let hitBuilding = false;
+                for (let i = 0; i < buildingPolygons.length; i++) {
+                    if (isPointInPolygon([nextLng, nextLat], buildingPolygons[i])) { hitBuilding = true; break; }
+                }
+
+                if (hitBuilding) {
+                    p.speed = -p.speed * 0.5; 
+                    p.angle += 30; 
+                } else {
+                    p.lat = nextLat; p.lng = nextLng;
+                }
+
+                // COLISÃO COM O JOGADOR (Batidas em vez de morte instantânea)
+                if (distToPlayer < 4.5 && !isWasted && p.ramCooldown === 0) {
+                    
+                    // Só é PRESO se estiver devagar/parado
+                    if (Math.abs(speed) < 0.08 && isDriving) {
+                        triggerWasted("PRESO!"); 
+                    } else if (!isDriving && distToPlayer < 2.5) {
+                        triggerWasted("PRESO!"); // Pego a pé
+                    } else if (isDriving) {
+                        // Bateu em alta velocidade! Joga o carro longe e arranca vida
+                        speed *= 0.6; // Quebra o seu embalo
+                        angle += (Math.random() > 0.5 ? 1 : -1) * (15 + Math.random() * 20); // Descontrola a direção
+                        
+                        p.speed = -p.speed * 0.5; // Polícia quica para trás
+                        p.ramCooldown = 90; // 1.5 segundos (a 60fps) sem colidir com você de novo
+
+                        reputation -= 5.0; 
+                        health -= 10; 
+                        checkCarVisuals();
+                        if (health <= 0) { 
+                            triggerWasted("CARRO DESTRUÍDO!"); 
+                        } else {
+                            statusColor = "#2196F3"; // Flash azul policial
+                            isHitFlashing = true; 
+                            carElement.style.background = "#2196F3";
+                            carElement.style.boxShadow = "0 0 20px 10px #2196F3";
+                            setTimeout(() => {
+                                isHitFlashing = false;
+                                if (!isWasted && isDriving) carElement.style.background = "#d32f2f";
+                            }, 150);
+                        }
+                    }
+                }
+            });
+        }
 
         function gameLoop(currentTime) {
             requestAnimationFrame(gameLoop);
@@ -1201,6 +1412,16 @@
                 else starEl.classList.remove('active');
             }
 
+            // NOVO: Gerenciador do Nível de Procurado e Atualização da IA
+            let targetPoliceCount = stars * 2; 
+            if (policeCars.length < targetPoliceCount) {
+                spawnPolice();
+            } else if (policeCars.length > targetPoliceCount) {
+                let p = policeCars.pop();
+                p.element.remove();
+            }
+            updatePoliceAI(stars);
+
             if (Math.abs(speed) > 0.05) {
                 let basePoints = 0.1; 
                 let starBonus = stars * 0.05; 
@@ -1210,6 +1431,17 @@
 
         function updateRender() {
             if (map) map.setView([lat, lng], 20, { animate: false }); 
+
+            // NOVO: Desenha a polícia no ecrã e alinha com o mapa real
+            policeCars.forEach(p => {
+                if (map) {
+                    const pos = map.latLngToContainerPoint([p.lat, p.lng]);
+                    p.element.style.display = 'block';
+                    p.element.style.left = pos.x + 'px';
+                    p.element.style.top = pos.y + 'px';
+                    p.element.style.transform = `rotate(${p.angle}deg)`;
+                }
+            });
 
             if (isDriving) {
                 carElement.style.left = '50%'; carElement.style.top = '50%';
