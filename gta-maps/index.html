@@ -147,7 +147,6 @@
             pointer-events: auto; 
         }
 
-        /* NOVO: Estilo do Interruptor (Switch) */
         .control-switch-container {
             display: flex; align-items: center; justify-content: center; gap: 10px; 
             margin-top: 15px; border-top: 1px solid #555; padding-top: 15px;
@@ -235,12 +234,22 @@
             animation: blink 1s infinite alternate;
         }
 
+        /* Status de carregamento do mapa */
+        #map-status {
+            position: absolute;
+            bottom: 90px; left: 20px;
+            background: rgba(0,0,0,0.7); color: #ffeb3b;
+            padding: 6px 12px; border-radius: 6px;
+            font-size: 12px; z-index: 25;
+            display: none;
+            border: 1px solid #ffeb3b;
+        }
+
         @keyframes blink {
             0% { opacity: 1; }
             100% { opacity: 0.3; }
         }
 
-        /* NOVO: Estilos da Polícia e Sirenes */
         .police-car {
             position: absolute; width: 14px; height: 28px;
             background: #111; margin-top: -14px; margin-left: -7px;
@@ -275,17 +284,12 @@
 
         #thought-bubble {
             position: absolute;
-            top: 35%;
-            left: 55%;
-            background: white;
-            color: black;
-            padding: 10px 15px;
-            border-radius: 15px;
+            top: 35%; left: 55%;
+            background: white; color: black;
+            padding: 10px 15px; border-radius: 15px;
             font-family: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif;
-            font-weight: bold;
-            font-size: 14px;
-            z-index: 25;
-            display: none;
+            font-weight: bold; font-size: 14px;
+            z-index: 25; display: none;
             box-shadow: 2px 2px 10px rgba(0,0,0,0.5);
             pointer-events: none;
             transform: translate(-50%, -50%);
@@ -294,8 +298,7 @@
         #thought-bubble::after {
             content: '';
             position: absolute;
-            bottom: -8px;
-            left: 20px;
+            bottom: -8px; left: 20px;
             border-width: 8px 8px 0 0;
             border-style: solid;
             border-color: white transparent transparent transparent;
@@ -336,6 +339,7 @@
 
     <div id="thought-bubble"></div>
     <div id="loading-text">CARREGANDO MAPA...</div>
+    <div id="map-status"></div>
 
     <div id="player">
         <div id="player-foot-l" class="player-foot"></div>
@@ -359,7 +363,6 @@
             <p><kbd>Espaço</kbd> : Entrar/Sair</p>
         </div>
         
-        <!-- NOVO: Interruptor de Modos (Switch) -->
         <div class="control-switch-container">
             <span class="mode-label">⌨️ Teclado</span>
             <label class="switch">
@@ -408,6 +411,174 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
+        // ============================================================
+        // CONFIGURAÇÃO DE APIs COM FALLBACK
+        // ============================================================
+
+        // Mirrors do Overpass em ordem de preferência
+        const OVERPASS_MIRRORS = [
+            'https://overpass-api.de/api/interpreter',
+            'https://overpass.kumi.systems/api/interpreter',
+            'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+            'https://overpass.openstreetmap.ru/api/interpreter'
+        ];
+
+        // Geocoding reverso com fallback
+        async function reverseGeocode(lat, lng) {
+            // Tenta Nominatim (mais confiável e sem CORS)
+            try {
+                const res = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=pt-BR`,
+                    { headers: { 'Accept-Language': 'pt-BR,pt;q=0.9' } }
+                );
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.address) {
+                        const a = data.address;
+                        const neighborhood = a.suburb || a.neighbourhood || a.quarter || a.village || a.town || a.city_district || a.road || "Área Desconhecida";
+                        const city = a.city || a.town || a.village || a.municipality || "";
+                        const state = a.state || "";
+                        return { neighborhood, city, state };
+                    }
+                }
+            } catch(e) {}
+
+            // Fallback: Photon
+            try {
+                const res = await fetch(`https://photon.komoot.io/reverse?lon=${lng}&lat=${lat}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data?.features?.length > 0) {
+                        const p = data.features[0].properties;
+                        return {
+                            neighborhood: p.district || p.suburb || p.neighbourhood || p.name || "Área Desconhecida",
+                            city: p.city || p.town || p.village || "",
+                            state: p.state || ""
+                        };
+                    }
+                }
+            } catch(e) {}
+
+            return null;
+        }
+
+        // Geocoding direto (busca) com fallback
+        async function geocodeAddress(query) {
+            // Tenta Nominatim primeiro
+            try {
+                const res = await fetch(
+                    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
+                    { headers: { 'Accept-Language': 'pt-BR,pt;q=0.9' } }
+                );
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data?.length > 0) {
+                        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+                    }
+                }
+            } catch(e) {}
+
+            // Fallback: Photon
+            try {
+                const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data?.features?.length > 0) {
+                        return {
+                            lat: parseFloat(data.features[0].geometry.coordinates[1]),
+                            lng: parseFloat(data.features[0].geometry.coordinates[0])
+                        };
+                    }
+                }
+            } catch(e) {}
+
+            return null;
+        }
+
+        // Geolocalização IP com múltiplos fallbacks
+        async function getIPLocation() {
+            const services = [
+                async () => {
+                    const r = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(4000) });
+                    const d = await r.json();
+                    if (d.latitude) return { lat: parseFloat(d.latitude), lng: parseFloat(d.longitude) };
+                    return null;
+                },
+                async () => {
+                    const r = await fetch('https://get.geojs.io/v1/ip/geo.json', { signal: AbortSignal.timeout(4000) });
+                    const d = await r.json();
+                    if (d.latitude) return { lat: parseFloat(d.latitude), lng: parseFloat(d.longitude) };
+                    return null;
+                },
+                async () => {
+                    const r = await fetch('https://ip-api.com/json/?fields=lat,lon,status', { signal: AbortSignal.timeout(4000) });
+                    const d = await r.json();
+                    if (d.status === 'success') return { lat: d.lat, lng: d.lon };
+                    return null;
+                }
+            ];
+
+            for (const service of services) {
+                try {
+                    const result = await service();
+                    if (result) return result;
+                } catch(e) {}
+            }
+            return null; // Usa padrão (SP) se tudo falhar
+        }
+
+        // Overpass com retry em mirrors diferentes
+        let currentOverpassMirror = 0;
+        async function fetchOverpass(query) {
+            const url = `data=${encodeURIComponent(query)}`;
+            const mirrorsToTry = [...OVERPASS_MIRRORS.slice(currentOverpassMirror), ...OVERPASS_MIRRORS.slice(0, currentOverpassMirror)];
+            
+            for (let i = 0; i < mirrorsToTry.length; i++) {
+                const mirror = mirrorsToTry[i];
+                try {
+                    showMapStatus(`Carregando mapa... (servidor ${i + 1}/${mirrorsToTry.length})`);
+                    const response = await fetch(mirror, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: url,
+                        signal: AbortSignal.timeout(12000)
+                    });
+                    
+                    if (!response.ok) continue;
+                    
+                    const text = await response.text();
+                    const data = JSON.parse(text);
+                    
+                    // Sucesso! Lembra o mirror que funcionou
+                    currentOverpassMirror = OVERPASS_MIRRORS.indexOf(mirror);
+                    if (currentOverpassMirror === -1) currentOverpassMirror = 0;
+                    hideMapStatus();
+                    return data;
+                } catch(e) {
+                    console.warn(`Mirror ${mirror} falhou:`, e.message);
+                    continue;
+                }
+            }
+            
+            // Todos os mirrors falharam
+            showMapStatus('⚠️ Mapa sem dados de rua (offline mode)');
+            setTimeout(hideMapStatus, 3000);
+            return null;
+        }
+
+        function showMapStatus(msg) {
+            const el = document.getElementById('map-status');
+            el.innerText = msg;
+            el.style.display = 'block';
+        }
+        function hideMapStatus() {
+            document.getElementById('map-status').style.display = 'none';
+        }
+
+        // ============================================================
+        // RESTO DO JOGO (igual ao original, usando as novas funções)
+        // ============================================================
+
         let map;
         const carElement = document.getElementById('car');
         const playerElement = document.getElementById('player');
@@ -431,7 +602,6 @@
         const loadingTextElement = document.getElementById('loading-text');
         const instructionsText = document.getElementById('instructions-text');
 
-        // Lógica de Tela Cheia
         const btnFullscreen = document.getElementById('btn-fullscreen');
         btnFullscreen.addEventListener('click', () => {
             if (!document.fullscreenElement) {
@@ -443,7 +613,6 @@
             }
         });
 
-        // Lógica do Switch de Controles (Teclado vs Tela)
         const controlSwitch = document.getElementById('control-switch');
         let isTouchMode = false;
         let touchState = { turnLeft: false, turnRight: false, boost: false, brakeExit: false, touches: 0, actionTriggered: false };
@@ -471,7 +640,6 @@
             touchState = { turnLeft: false, turnRight: false, boost: false, brakeExit: false, touches: 0, actionTriggered: false };
         });
 
-        // Detecta se é celular e liga o Switch automaticamente
         if (('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth <= 768) {
             controlSwitch.checked = true;
             controlSwitch.dispatchEvent(new Event('change'));
@@ -481,7 +649,6 @@
             ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, Space: false, Shift: false
         };
 
-        // Configuração Controles Mobile (Quadrantes)
         function handleTouch(e) {
             if (!isTouchMode) return; 
             
@@ -543,11 +710,10 @@
         let carLat = 0, carLng = 0, carAngle = 0;
         let autoWalkToCar = false;
 
-        // NOVO: Física muito mais gradual e suave
         const baseAcceleration = 0.015; 
         const boostAcceleration = 0.025;
         const baseFriction = 0.985; 
-        const brakePower = 0.035; // Freio gradual dedicado
+        const brakePower = 0.035;
         const turnSpeed = 3.5; 
 
         let reputation = 1000;
@@ -572,32 +738,19 @@
         let isFetchingEnvironment = false; 
         let isSpawning = false; 
 
-        // NOVO: Variáveis do Sistema de Polícia
         let policeCars = [];
 
         let lastGeoLat = 0;
         let lastGeoLng = 0;
 
         async function updateLocationName(currentLat, currentLng) {
-            try {
-                const res = await fetch(`https://photon.komoot.io/reverse?lon=${currentLng}&lat=${currentLat}`);
-                const data = await res.json();
-                if (data && data.features && data.features.length > 0) {
-                    const props = data.features[0].properties;
-                    let neighborhood = props.district || props.suburb || props.neighbourhood || props.locality || props.name || "Área Desconhecida";
-                    let city = props.city || props.town || props.village || props.county || "";
-                    let state = props.state || "";
-
-                    locNeighElement.innerText = "📍 " + neighborhood;
-
-                    let cityStateParts = [];
-                    if (city && city !== neighborhood) cityStateParts.push(city);
-                    if (state) cityStateParts.push(state);
-                    
-                    locCityStateElement.innerText = cityStateParts.join(' - ');
-                }
-            } catch (e) {
-                console.warn("Erro ao buscar nome do local");
+            const result = await reverseGeocode(currentLat, currentLng);
+            if (result) {
+                locNeighElement.innerText = "📍 " + result.neighborhood;
+                let parts = [];
+                if (result.city && result.city !== result.neighborhood) parts.push(result.city);
+                if (result.state) parts.push(result.state);
+                locCityStateElement.innerText = parts.join(' - ');
             }
         }
 
@@ -616,14 +769,13 @@
             thoughtBubbleElement.style.display = 'none'; 
             infractionFrames = 0;
             
-            // NOVO: Tela clássica PRESO (Busted) vs WASTED
             const wastedTextEl = document.getElementById('wasted-text');
             if (reason === "PRESO!") {
                 wastedTextEl.innerText = "PRESO";
-                wastedTextEl.style.color = "#2196F3"; // Azul polícia
+                wastedTextEl.style.color = "#2196F3";
             } else {
                 wastedTextEl.innerText = "WASTED";
-                wastedTextEl.style.color = "#d32f2f"; // Vermelho clássico
+                wastedTextEl.style.color = "#d32f2f";
             }
 
             if (isDriving) {
@@ -727,14 +879,12 @@
         }
 
         async function startUp() {
-            try {
-                const res = await fetch('https://get.geojs.io/v1/ip/geo.json');
-                const data = await res.json();
-                if (data.latitude && data.longitude) {
-                    lat = parseFloat(data.latitude);
-                    lng = parseFloat(data.longitude);
-                }
-            } catch (err) { }
+            const loc = await getIPLocation();
+            if (loc) {
+                lat = loc.lat;
+                lng = loc.lng;
+            }
+            // Se tudo falhar, usa São Paulo como padrão
             initMap();
         }
 
@@ -774,30 +924,15 @@
             isFetchingEnvironment = true;
 
             const radius = 600; 
-            const query = `[out:json];
+            const query = `[out:json][timeout:15];
             (
               way["building"](around:${radius},${centerLat},${centerLng});
               way["highway"]["highway"!~"footway|pedestrian|path|steps"](around:${radius},${centerLat},${centerLng});
             );
             out tags geom;`;
-            
-            const url = `https://overpass-api.de/api/interpreter`;
 
             try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `data=${encodeURIComponent(query)}`
-                });
-                
-                const textData = await response.text();
-                let data;
-                try {
-                    data = JSON.parse(textData);
-                } catch (parseError) {
-                    isFetchingEnvironment = false;
-                    return; 
-                }
+                const data = await fetchOverpass(query);
 
                 if (data && data.elements) {
                     buildingPolygons = [];
@@ -837,7 +972,9 @@
                         }
                     });
                 }
-            } catch (err) {}
+            } catch (err) {
+                console.warn('Erro ao carregar ambiente:', err);
+            }
             isFetchingEnvironment = false; 
         }
 
@@ -881,7 +1018,6 @@
             document.getElementById('player-body').style.background = "#FFD700";
             checkCarVisuals();
 
-            // NOVO: Remove os carros da polícia ao reiniciar
             policeCars.forEach(p => p.element.remove());
             policeCars = [];
 
@@ -890,50 +1026,42 @@
             requestAnimationFrame(gameLoop);
         });
 
-        document.getElementById('search-btn').addEventListener('click', () => {
+        document.getElementById('search-btn').addEventListener('click', async () => {
             const query = document.getElementById('address-input').value;
             if (!query) return;
 
             const btn = document.getElementById('search-btn');
             btn.innerText = '...'; 
 
-            fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`)
-                .then(response => response.json())
-                .then(data => {
-                    btn.innerText = 'Buscar';
-                    if (data && data.features && data.features.length > 0) {
-                        let newLat = parseFloat(data.features[0].geometry.coordinates[1]);
-                        let newLng = parseFloat(data.features[0].geometry.coordinates[0]);
-                        spawnPlayer(newLat, newLng); 
-                    } else {
-                        const oldText = btn.innerText;
-                        btn.innerText = 'Não achou!';
-                        setTimeout(() => btn.innerText = oldText, 2000);
-                    }
-                })
-                .catch(err => {
-                    btn.innerText = 'Erro';
-                    setTimeout(() => btn.innerText = 'Buscar', 2000);
-                });
+            const result = await geocodeAddress(query);
+            
+            if (result) {
+                btn.innerText = 'Buscar';
+                lat = result.lat;
+                lng = result.lng;
+                spawnPlayer(result.lat, result.lng); 
+            } else {
+                btn.innerText = 'Não achou!';
+                setTimeout(() => btn.innerText = 'Buscar', 2000);
+            }
         });
 
-        // ==========================================================
-        // NOVO: LOOP COM TEMPO FIXO (Previne Bug dos 120Hz/Fast-Forward)
-        // ==========================================================
+        // Busca com Enter
+        document.getElementById('address-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') document.getElementById('search-btn').click();
+        });
+
         let lastTime = performance.now();
         let accumulator = 0;
-        const TIME_STEP = 16.666; // 60 FPS fixo na física
+        const TIME_STEP = 16.666;
 
-        // NOVO: Lógica de Spawn e IA da Polícia
         function spawnPolice() {
             let pLat = lat;
             let pLng = lng;
             let pAngle = 0;
             let foundRoad = false;
 
-            // 1. Tenta achar uma rua distante (fora da tela) para nascer
             if (roadSegments.length > 0) {
-                // Embaralha as ruas para nascer em lugares diferentes
                 let shuffled = roadSegments.slice().sort(() => 0.5 - Math.random());
                 for (let seg of shuffled) {
                     let midX = (seg.v.x + seg.w.x) / 2;
@@ -942,7 +1070,6 @@
                     let carMeters = toMeters(lat, lng);
                     let dist = Math.sqrt(Math.pow(midX - carMeters.x, 2) + Math.pow(midY - carMeters.y, 2));
 
-                    // Longe o suficiente para não aparecer do nada, mas perto o suficiente para perseguir
                     if (dist > 150 && dist < 350) { 
                         pLat = envCenterLat + (midY / 111320);
                         pLng = envCenterLng + (midX / (111320 * Math.cos(envCenterLat * Math.PI / 180)));
@@ -956,7 +1083,6 @@
                 }
             }
 
-            // 2. Fallback: Se não achar rua, nasce num raio circular de 200m
             if (!foundRoad) {
                 let spawnAngle = Math.random() * Math.PI * 2;
                 let spawnDist = 200; 
@@ -979,7 +1105,7 @@
                 lat: pLat, lng: pLng,
                 angle: pAngle, 
                 speed: 0.1, element: el,
-                ramCooldown: 0 // Controle de tempo entre batidas
+                ramCooldown: 0
             });
         }
 
@@ -987,7 +1113,7 @@
             if (policeCars.length === 0) return;
             
             let basePoliceSpeed = 0.5 + (stars * 0.1); 
-            let policeAccel = 0.008 + (stars * 0.003); // Aceleração mais lenta (delay de retomada)
+            let policeAccel = 0.008 + (stars * 0.003);
 
             policeCars.forEach(p => {
                 if (p.ramCooldown > 0) p.ramCooldown--;
@@ -997,7 +1123,6 @@
                 
                 let distToPlayer = Math.sqrt(Math.pow(dLat * 111320, 2) + Math.pow(dLng * 111320 * Math.cos(lat * Math.PI / 180), 2));
 
-                // Desaparece e reaparece se ficar muito para trás
                 if (distToPlayer > 450) {
                     p.element.remove();
                     policeCars = policeCars.filter(car => car !== p);
@@ -1011,23 +1136,20 @@
                 while (diffAngle > 180) diffAngle -= 360;
                 while (diffAngle < -180) diffAngle += 360;
 
-                // IA curva suavemente (simulando peso do carro da polícia)
                 p.angle += Math.max(-3, Math.min(3, diffAngle * 0.15));
 
-                // IA acompanha a velocidade do jogador com elástico (Rubber-banding)
                 let targetSpeed = basePoliceSpeed;
                 if (distToPlayer < 40) {
-                    // Corre apenas um pouquinho mais rápido que o jogador para acompanhar
                     targetSpeed = Math.abs(speed) + 0.02 + (stars * 0.01); 
                 } else {
-                    targetSpeed = basePoliceSpeed * 1.5; // Muito longe, tenta alcançar rápido
+                    targetSpeed = basePoliceSpeed * 1.5;
                 }
 
                 if (p.speed < targetSpeed) p.speed += policeAccel;
-                else p.speed -= policeAccel * 2; // Freia mais rápido se estiver muito veloz
+                else p.speed -= policeAccel * 2;
 
                 if (p.ramCooldown > 0) {
-                    p.speed *= 0.9; // Fica zonzo (perde velocidade) logo após bater
+                    p.speed *= 0.9;
                 }
 
                 const rad = p.angle * Math.PI / 180;
@@ -1049,21 +1171,17 @@
                     p.lat = nextLat; p.lng = nextLng;
                 }
 
-                // COLISÃO COM O JOGADOR (Batidas em vez de morte instantânea)
                 if (distToPlayer < 4.5 && !isWasted && p.ramCooldown === 0) {
-                    
-                    // Só é PRESO se estiver devagar/parado
                     if (Math.abs(speed) < 0.08 && isDriving) {
                         triggerWasted("PRESO!"); 
                     } else if (!isDriving && distToPlayer < 2.5) {
-                        triggerWasted("PRESO!"); // Pego a pé
+                        triggerWasted("PRESO!");
                     } else if (isDriving) {
-                        // Bateu em alta velocidade! Joga o carro longe e arranca vida
-                        speed *= 0.6; // Quebra o seu embalo
-                        angle += (Math.random() > 0.5 ? 1 : -1) * (15 + Math.random() * 20); // Descontrola a direção
+                        speed *= 0.6;
+                        angle += (Math.random() > 0.5 ? 1 : -1) * (15 + Math.random() * 20);
                         
-                        p.speed = -p.speed * 0.5; // Polícia quica para trás
-                        p.ramCooldown = 90; // 1.5 segundos (a 60fps) sem colidir com você de novo
+                        p.speed = -p.speed * 0.5;
+                        p.ramCooldown = 90;
 
                         reputation -= 5.0; 
                         health -= 10; 
@@ -1071,7 +1189,7 @@
                         if (health <= 0) { 
                             triggerWasted("CARRO DESTRUÍDO!"); 
                         } else {
-                            statusColor = "#2196F3"; // Flash azul policial
+                            statusColor = "#2196F3";
                             isHitFlashing = true; 
                             carElement.style.background = "#2196F3";
                             carElement.style.boxShadow = "0 0 20px 10px #2196F3";
@@ -1094,10 +1212,9 @@
             let dt = currentTime - lastTime;
             lastTime = currentTime;
             
-            if (dt > 100) dt = 100; // Limita saltos gigantes se travar a tab
+            if (dt > 100) dt = 100;
             accumulator += dt;
 
-            // Executa a física exatamente 60 vezes por segundo, mesmo se a tela rodar a 120Hz
             while (accumulator >= TIME_STEP) {
                 updatePhysics();
                 accumulator -= TIME_STEP;
@@ -1106,22 +1223,20 @@
             updateRender();
         }
 
-        let statusColor = "white"; // Variável movida para ser visível no render
+        let statusColor = "white";
 
         function updatePhysics() {
-            // Lógica do Modo Tela (Celular) com FREIO GRADUAL e SALTO SEGURO
             if (isTouchMode && !autoWalkToCar) {
                 keys.ArrowLeft = touchState.turnLeft;
                 keys.ArrowRight = touchState.turnRight;
 
                 if (touchState.brakeExit) {
                     keys.ArrowUp = false;
-                    keys.ArrowDown = true; // Aplica o freio suave novo
+                    keys.ArrowDown = true;
                     keys.Shift = false;
                     
                     const displaySpeed = Math.abs(Math.round(speed * 200));
                     if (!touchState.actionTriggered) {
-                        // NOVO: Espera o carro frear. Se chegar abaixo de 15 km/h, ele salta!
                         if (isDriving && displaySpeed <= 15) {
                             handleSpacebar(); 
                             touchState.actionTriggered = true;
@@ -1275,10 +1390,9 @@
             if (!autoWalkToCar) {
                 let isTurningIntent = keys.ArrowLeft || keys.ArrowRight;
                 
-                if (isDriving && isTurningIntent) currentAccel *= 0.2; // Perde 80% do "arranque" ao curvar
+                if (isDriving && isTurningIntent) currentAccel *= 0.2;
 
                 if (keys.ArrowUp) speed += currentAccel;
-                // NOVO: Usa a força de freio delicada em vez da aceleração
                 let currentBrake = isDriving ? brakePower * (health <= 20 ? 0.5 : 1.0) : currentAccel;
                 if (keys.ArrowDown) speed -= currentBrake; 
 
@@ -1289,7 +1403,6 @@
                 if (Math.abs(speed) > 0.01) {
                     const turnDirection = speed > 0 ? 1 : -1;
                     
-                    // Suavização da direção (Mobile x PC)
                     let steerSpeed = isTouchMode ? 0.08 : 0.25; 
                     
                     if (keys.ArrowLeft) steering -= steerSpeed; 
@@ -1412,7 +1525,6 @@
                 else starEl.classList.remove('active');
             }
 
-            // NOVO: Gerenciador do Nível de Procurado e Atualização da IA
             let targetPoliceCount = stars * 2; 
             if (policeCars.length < targetPoliceCount) {
                 spawnPolice();
@@ -1432,7 +1544,6 @@
         function updateRender() {
             if (map) map.setView([lat, lng], 20, { animate: false }); 
 
-            // NOVO: Desenha a polícia no ecrã e alinha com o mapa real
             policeCars.forEach(p => {
                 if (map) {
                     const pos = map.latLngToContainerPoint([p.lat, p.lng]);
@@ -1499,7 +1610,6 @@
             survivalScoreElement.innerText = Math.floor(survivalScore);
             repUiElement.style.borderColor = statusColor;
 
-            // FADE OUT da Interface quando está rápido
             if (displaySpeed !== 0 && isDriving) {
                 instructionsElement.style.opacity = '0'; 
                 titleElement.style.opacity = '0';
