@@ -13,7 +13,7 @@
             overflow: hidden;
             background-color: #333;
             font-family: 'Courier New', Courier, monospace;
-            touch-action: none; /* Evita que o celular dê zoom ou puxe a tela */
+            touch-action: none;
             user-select: none;
             -webkit-user-select: none;
         }
@@ -25,7 +25,6 @@
             top: 0; left: 0; z-index: 1;
         }
 
-        /* O Carro - Ligeiramente maior para bater com a escala do mapa */
         #car {
             position: absolute;
             top: 50%; left: 50%;
@@ -53,7 +52,6 @@
             background: #b71c1c; border-radius: 2px;
         }
 
-        /* O Boneco (Jogador a pé) */
         #player {
             position: absolute;
             top: 50%; left: 50%;
@@ -118,7 +116,6 @@
         .star { color: #555; transition: color 0.3s ease; }
         .star.active { color: #FFD700; text-shadow: 0 0 5px #FFD700; }
 
-        /* Barra de Fôlego (Stamina) */
         #stamina-bar-container {
             width: 100%; height: 6px; background: #555; border-radius: 3px; 
             margin-top: 10px; overflow: hidden; display: none;
@@ -142,7 +139,6 @@
             overflow: hidden; text-overflow: ellipsis; margin-top: 2px;
         }
 
-        /* NOVO: Ajuste do painel de instruções e botões embutidos */
         #instructions {
             position: absolute; bottom: 20px; left: 20px;
             background: rgba(0, 0, 0, 0.8); color: white;
@@ -151,26 +147,36 @@
             pointer-events: auto; 
         }
 
+        /* NOVO: Estilo do Interruptor (Switch) */
+        .control-switch-container {
+            display: flex; align-items: center; justify-content: center; gap: 10px; 
+            margin-top: 15px; border-top: 1px solid #555; padding-top: 15px;
+        }
+        .mode-label { font-size: 14px; font-weight: bold; color: #ddd; }
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #4CAF50; }
+        input:checked + .slider:before { transform: translateX(20px); }
+
         .instruction-buttons {
-            display: flex; gap: 10px; margin-top: 15px; border-top: 1px solid #555; padding-top: 15px;
+            display: flex; gap: 10px; margin-top: 15px;
         }
 
         .inst-btn {
-            background: rgba(255, 255, 255, 0.1); color: white;
+            background: rgba(255, 255, 255, 0.1); color: white; width: 100%;
             border: 1px solid white; border-radius: 5px;
             padding: 8px 12px; font-size: 14px; cursor: pointer;
             display: flex; justify-content: center; align-items: center; gap: 5px;
             transition: transform 0.2s, background 0.2s;
         }
-
         .inst-btn:active { transform: scale(0.95); background: rgba(255, 255, 255, 0.3); }
 
         kbd {
             background: #eee; color: #333; padding: 2px 6px;
             border-radius: 3px; font-family: sans-serif; font-size: 14px;
         }
-
-        /* Removido o CSS dos controlos Touch antigos (Manche e Botões) */
 
         #game-title {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
@@ -196,7 +202,6 @@
             #search-container { top: 60px; }
             #address-input { width: 150px; }
             #reputation-ui { transform: scale(0.8); transform-origin: top right; }
-            /* Ajustes finos para Mobile */
             #ui { transform: scale(0.8); transform-origin: bottom right; right: 10px; bottom: 10px; }
             #instructions { font-size: 11px; bottom: 10px; left: 10px; padding: 10px; }
             .inst-btn { padding: 6px 8px; font-size: 12px; }
@@ -306,7 +311,6 @@
         <div id="player-head"></div>
     </div>
 
-    <!-- Interface Superior -->
     <div id="game-title">GTA MAPS</div>
 
     <div id="search-container">
@@ -314,7 +318,6 @@
         <button id="search-btn">Buscar</button>
     </div>
 
-    <!-- Instruções (Dinâmicas via JS) e Botões Integrados -->
     <div id="instructions">
         <div id="instructions-text">
             <h3 style="margin-top:0">TECLADO</h3>
@@ -322,9 +325,19 @@
             <p><kbd>Shift</kbd> : Acelerar+</p>
             <p><kbd>Espaço</kbd> : Entrar/Sair</p>
         </div>
+        
+        <!-- NOVO: Interruptor de Modos (Switch) -->
+        <div class="control-switch-container">
+            <span class="mode-label">⌨️ Teclado</span>
+            <label class="switch">
+                <input type="checkbox" id="control-switch">
+                <span class="slider"></span>
+            </label>
+            <span class="mode-label">📱 Celular</span>
+        </div>
+
         <div class="instruction-buttons">
             <button id="btn-fullscreen" class="inst-btn" title="Tela Cheia">⛶ Tela Cheia</button>
-            <button id="btn-control-toggle" class="inst-btn" title="Alternar Controles">⌨️ Teclado</button>
         </div>
     </div>
 
@@ -397,11 +410,11 @@
             }
         });
 
-        // Lógica de Alternância de Controles (Teclado vs Tela)
-        const btnControlToggle = document.getElementById('btn-control-toggle');
+        // Lógica do Switch de Controles (Teclado vs Tela)
+        const controlSwitch = document.getElementById('control-switch');
         let isTouchMode = false;
-        let touchState = { left: false, right: false, sprint: false, touches: 0 };
-        let autoAccelBlockUntil = 0; // Controle de delay pós-freio
+        let touchState = { turnLeft: false, turnRight: false, boost: false, brakeExit: false, touches: 0, actionTriggered: false };
+        let autoAccelBlockUntil = 0; 
 
         const textKeyboard = `
             <h3 style="margin-top:0">TECLADO</h3>
@@ -412,33 +425,34 @@
 
         const textTouch = `
             <h3 style="margin-top:0">TELA (AUTO)</h3>
-            <p>👈 Lado Esq. : Vira p/ Esquerda</p>
-            <p>👉 Lado Dir. : Vira p/ Direita</p>
-            <p>👈+👉 Ambos : Frear / Ré</p>
-            <p>👆 Topo Tela : Correr / Turbo</p>
-            <p>✌️ Toque Duplo : Sair (2 Dedos)</p>
+            <p>↙️ Inf. Esq. : Vira Esquerda</p>
+            <p>↘️ Inf. Dir. : Vira Direita</p>
+            <p>↖️ Sup. Esq. : Turbo / Correr</p>
+            <p>↗️ Sup. Dir. : Frear (Segure p/ Sair)</p>
         `;
 
-        btnControlToggle.addEventListener('click', () => {
-            isTouchMode = !isTouchMode;
-            btnControlToggle.innerHTML = isTouchMode ? '📱 Celular' : '⌨️ Teclado';
+        controlSwitch.addEventListener('change', (e) => {
+            isTouchMode = e.target.checked;
             instructionsText.innerHTML = isTouchMode ? textTouch : textKeyboard;
-            
             for(let k in keys) keys[k] = false;
-            touchState = { left: false, right: false, sprint: false, touches: 0 };
+            touchState = { turnLeft: false, turnRight: false, boost: false, brakeExit: false, touches: 0, actionTriggered: false };
         });
+
+        // Detecta se é celular e liga o Switch automaticamente
+        if (('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth <= 768) {
+            controlSwitch.checked = true;
+            controlSwitch.dispatchEvent(new Event('change'));
+        }
 
         const keys = {
             ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, Space: false, Shift: false
         };
 
-        // Configuração Controles Mobile (Sistema PAKO com Auto-Acelerar)
-        let lastTwoFingerTap = 0;
-
+        // Configuração Controles Mobile (Quadrantes)
         function handleTouch(e) {
-            if (!isTouchMode) return; // Só funciona se o botão de modo tela estiver ativo
+            if (!isTouchMode) return; 
             
-            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL' || e.target.tagName === 'SPAN') return;
 
             if (e.cancelable && e.type !== 'touchend' && e.type !== 'touchcancel') {
                 e.preventDefault(); 
@@ -448,31 +462,31 @@
             let touches = e.touches;
             touchState.touches = touches.length;
 
-            // NOVO: Aplica o delay de segurança ao soltar o freio antes de voltar a acelerar
             if (previousTouches > 0 && touchState.touches === 0) {
                 autoAccelBlockUntil = Date.now() + 400; 
             }
 
-            touchState.left = false;
-            touchState.right = false;
-            touchState.sprint = false;
+            touchState.turnLeft = false;
+            touchState.turnRight = false;
+            touchState.boost = false;
+            touchState.brakeExit = false;
 
-            if (e.type === 'touchstart' && touches.length === 2) {
-                let now = Date.now();
-                if (now - lastTwoFingerTap < 500) {
-                    handleSpacebar();
-                    lastTwoFingerTap = 0; 
-                } else {
-                    lastTwoFingerTap = now;
-                }
-            }
+            let w2 = window.innerWidth / 2;
+            let h2 = window.innerHeight / 2;
 
             for (let i = 0; i < touches.length; i++) {
                 let t = touches[i];
-                if (t.clientX < window.innerWidth / 2) touchState.left = true;
-                else touchState.right = true;
+                let isLeft = t.clientX < w2;
+                let isTop = t.clientY < h2;
 
-                if (t.clientY < window.innerHeight * 0.5) touchState.sprint = true;
+                if (isTop && isLeft) touchState.boost = true;
+                else if (isTop && !isLeft) touchState.brakeExit = true;
+                else if (!isTop && isLeft) touchState.turnLeft = true;
+                else if (!isTop && !isLeft) touchState.turnRight = true;
+            }
+            
+            if (!touchState.brakeExit) {
+                touchState.actionTriggered = false;
             }
         }
 
@@ -481,7 +495,6 @@
         window.addEventListener('touchend', handleTouch, {passive: false});
         window.addEventListener('touchcancel', handleTouch, {passive: false});
 
-        // Animação do Boneco
         const footL = document.getElementById('player-foot-l');
         const footR = document.getElementById('player-foot-r');
         let walkCycle = 0; 
@@ -491,14 +504,17 @@
 
         let speed = 0;
         let angle = 0; 
-        let steering = 0; // NOVO: Controle de inércia do volante
+        let steering = 0; 
         
         let isDriving = true;
         let carLat = 0, carLng = 0, carAngle = 0;
         let autoWalkToCar = false;
 
-        const acceleration = 0.04; 
-        const friction = 0.97; 
+        // NOVO: Física muito mais gradual e suave
+        const baseAcceleration = 0.015; 
+        const boostAcceleration = 0.025;
+        const baseFriction = 0.985; 
+        const brakePower = 0.035; // Freio gradual dedicado
         const turnSpeed = 3.5; 
 
         let reputation = 1000;
@@ -630,7 +646,7 @@
             
             if (isDriving) {
                 const displaySpeed = Math.abs(Math.round(speed * 200));
-                if (displaySpeed > 10) {
+                if (displaySpeed > 20) {
                     triggerWasted("SAIU DO CARRO EM MOVIMENTO!");
                 } else {
                     isDriving = false;
@@ -652,7 +668,7 @@
             map = L.map('map', {
                 zoomControl: false, keyboard: false, dragging: false,
                 scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false,
-                touchZoom: false, tap: false // NOVO: Desativa os toques automáticos do Leaflet
+                touchZoom: false, tap: false 
             }).setView([lat, lng], 13); 
 
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -851,38 +867,64 @@
                 });
         });
 
-        function gameLoop() {
-            if (isWasted) return;
+        // ==========================================================
+        // NOVO: LOOP COM TEMPO FIXO (Previne Bug dos 120Hz/Fast-Forward)
+        // ==========================================================
+        let lastTime = performance.now();
+        let accumulator = 0;
+        const TIME_STEP = 16.666; // 60 FPS fixo na física
 
-            if (isSpawning) {
-                requestAnimationFrame(gameLoop);
-                return;
+        function gameLoop(currentTime) {
+            requestAnimationFrame(gameLoop);
+
+            if (isWasted || isSpawning) return;
+
+            if (!currentTime) currentTime = performance.now();
+            let dt = currentTime - lastTime;
+            lastTime = currentTime;
+            
+            if (dt > 100) dt = 100; // Limita saltos gigantes se travar a tab
+            accumulator += dt;
+
+            // Executa a física exatamente 60 vezes por segundo, mesmo se a tela rodar a 120Hz
+            while (accumulator >= TIME_STEP) {
+                updatePhysics();
+                accumulator -= TIME_STEP;
             }
 
-            // Sobreposição de controles quando no Modo Tela (Auto-acelerar)
+            updateRender();
+        }
+
+        let statusColor = "white"; // Variável movida para ser visível no render
+
+        function updatePhysics() {
+            // Lógica do Modo Tela (Celular) com FREIO GRADUAL e SALTO SEGURO
             if (isTouchMode && !autoWalkToCar) {
-                if (touchState.touches === 0) {
-                    if (Date.now() > autoAccelBlockUntil) {
-                        keys.ArrowUp = true; // AUTO-ACELERAÇÃO CONTÍNUA
-                    } else {
-                        keys.ArrowUp = false; // Segura a aceleração por meio segundo ao soltar os dedos
-                    }
-                    keys.ArrowDown = false;
-                    keys.ArrowLeft = false;
-                    keys.ArrowRight = false;
-                    keys.Shift = false;
-                } else if (touchState.left && touchState.right) {
+                keys.ArrowLeft = touchState.turnLeft;
+                keys.ArrowRight = touchState.turnRight;
+
+                if (touchState.brakeExit) {
                     keys.ArrowUp = false;
-                    keys.ArrowDown = true; // Freia/Ré com dois lados apertados
-                    keys.ArrowLeft = false;
-                    keys.ArrowRight = false;
+                    keys.ArrowDown = true; // Aplica o freio suave novo
                     keys.Shift = false;
+                    
+                    const displaySpeed = Math.abs(Math.round(speed * 200));
+                    if (!touchState.actionTriggered) {
+                        // NOVO: Espera o carro frear. Se chegar abaixo de 15 km/h, ele salta!
+                        if (isDriving && displaySpeed <= 15) {
+                            handleSpacebar(); 
+                            touchState.actionTriggered = true;
+                        } else if (!isDriving) {
+                            handleSpacebar(); 
+                            touchState.actionTriggered = true;
+                        }
+                    }
                 } else {
-                    keys.ArrowUp = true; // Continua a acelerar enquanto curva
+                    if (Date.now() > autoAccelBlockUntil) keys.ArrowUp = true; 
+                    else keys.ArrowUp = false; 
+                    
                     keys.ArrowDown = false;
-                    keys.ArrowLeft = touchState.left;
-                    keys.ArrowRight = touchState.right;
-                    keys.Shift = touchState.sprint; // Turbo se tocou na metade superior
+                    keys.Shift = touchState.boost;
                 }
             }
 
@@ -911,7 +953,7 @@
             } else { onRoad = true; }
 
             let currentMaxSpeed, currentFriction, currentTurnSpeed, currentAccel;
-            let statusColor = "white";
+            statusColor = "white";
             let isSprinting = false;
 
             let baseRoadLimit = onRoad && closestSeg ? (closestSeg.isHighway ? 1.0 : 0.5) : 0.2; 
@@ -919,15 +961,12 @@
             if (isDriving) {
                 let damageMultiplier = (health <= 20) ? 0.5 : 1.0;
 
-                if (keys.Shift) {
-                    currentMaxSpeed = 1.1 * damageMultiplier; 
-                } else {
-                    currentMaxSpeed = baseRoadLimit * damageMultiplier; 
-                }
+                if (keys.Shift) currentMaxSpeed = 1.1 * damageMultiplier; 
+                else currentMaxSpeed = baseRoadLimit * damageMultiplier; 
                 
-                currentFriction = onRoad ? friction : 0.82; 
+                currentFriction = onRoad ? baseFriction : 0.82; 
                 currentTurnSpeed = onRoad ? turnSpeed : turnSpeed * 0.6;
-                currentAccel = (keys.Shift ? acceleration * 1.5 : acceleration) * damageMultiplier; 
+                currentAccel = (keys.Shift ? boostAcceleration : baseAcceleration) * damageMultiplier; 
                 
                 staminaBarContainer.style.display = 'none'; 
 
@@ -939,22 +978,12 @@
                     isSprinting = true;
                     currentMaxSpeed = 0.15; 
                     stamina -= 1; 
-                    if (stamina <= 0) {
-                        stamina = 0;
-                        isExhausted = true;
-                    }
+                    if (stamina <= 0) { stamina = 0; isExhausted = true; }
                 } else {
                     isSprinting = false;
                     currentMaxSpeed = 0.075; 
-                    if (!isMoving) {
-                        stamina += 6; 
-                    } else {
-                        stamina += 3; 
-                    }
-                    if (stamina >= maxStamina) {
-                        stamina = maxStamina;
-                        isExhausted = false;
-                    }
+                    if (!isMoving) stamina += 6; else stamina += 3; 
+                    if (stamina >= maxStamina) { stamina = maxStamina; isExhausted = false; }
                 }
 
                 staminaBar.style.width = (stamina / maxStamina * 100) + '%';
@@ -965,22 +994,13 @@
                 currentAccel = isSprinting ? 0.04 : 0.02; 
             }
 
-            let isOffRoad = false;
-            let isWrongWay = false;
-            let isSpeeding = false;
-            let isDrivingWell = false;
+            let isOffRoad = false, isWrongWay = false, isSpeeding = false, isDrivingWell = false;
 
             if (isDriving && Math.abs(speed) > 0.05) {
                 if (!onRoad) {
-                    reputation -= 1.5; 
-                    statusColor = "#f44336"; 
-                    isOffRoad = true;
-                    
-                    health -= 0.05; 
-                    checkCarVisuals(); 
-                    if (health <= 0 && !isWasted) {
-                        triggerWasted("SUSPENSÃO DESTRUÍDA!");
-                    }
+                    reputation -= 1.5; statusColor = "#f44336"; isOffRoad = true;
+                    health -= 0.05; checkCarVisuals(); 
+                    if (health <= 0 && !isWasted) triggerWasted("SUSPENSÃO DESTRUÍDA!");
                 } else if (closestSeg) {
                     let Rx = closestSeg.w.x - closestSeg.v.x;
                     let Ry = closestSeg.w.y - closestSeg.v.y;
@@ -1021,10 +1041,8 @@
                 }
                 
                 if (onRoad && Math.abs(speed) > baseRoadLimit + 0.05) {
-                    reputation -= 0.05; 
-                    statusColor = "#ff9800"; 
-                    isSpeeding = true;
-                    isDrivingWell = false; 
+                    reputation -= 0.05; statusColor = "#ff9800"; 
+                    isSpeeding = true; isDrivingWell = false; 
                 }
             }
 
@@ -1033,9 +1051,7 @@
                 else if (isWrongWay) currentInfraction = 'wrongway';
                 else if (isSpeeding) currentInfraction = 'speeding';
                 else currentInfraction = 'none';
-            } else {
-                currentInfraction = 'none';
-            }
+            } else { currentInfraction = 'none'; }
 
             if (currentInfraction !== 'none') {
                 infractionFrames++;
@@ -1048,13 +1064,12 @@
             if (!autoWalkToCar) {
                 let isTurningIntent = keys.ArrowLeft || keys.ArrowRight;
                 
-                // CORREÇÃO: O motor perde a força de aceleração nas curvas (em vez de frear o carro à força)
-                if (isDriving && isTurningIntent) {
-                    currentAccel *= 0.1; // Corta 90% da capacidade de acelerar enquanto vira
-                }
+                if (isDriving && isTurningIntent) currentAccel *= 0.2; // Perde 80% do "arranque" ao curvar
 
                 if (keys.ArrowUp) speed += currentAccel;
-                if (keys.ArrowDown) speed -= currentAccel;
+                // NOVO: Usa a força de freio delicada em vez da aceleração
+                let currentBrake = isDriving ? brakePower * (health <= 20 ? 0.5 : 1.0) : currentAccel;
+                if (keys.ArrowDown) speed -= currentBrake; 
 
                 speed *= currentFriction;
 
@@ -1063,28 +1078,20 @@
                 if (Math.abs(speed) > 0.01) {
                     const turnDirection = speed > 0 ? 1 : -1;
                     
-                    // NOVO: Suavização do volante (Steering Smoothing)
-                    // Evita que o carro vire bruscamente com "toquinhos" no celular
-                    let steerSpeed = isTouchMode ? 0.12 : 0.25;
+                    // Suavização da direção (Mobile x PC)
+                    let steerSpeed = isTouchMode ? 0.08 : 0.25; 
                     
-                    if (keys.ArrowLeft) { 
-                        steering -= steerSpeed; 
-                    } else if (keys.ArrowRight) { 
-                        steering += steerSpeed; 
-                    } else {
-                        steering *= 0.5; // Volante volta rapidamente para o centro ao soltar
-                    }
+                    if (keys.ArrowLeft) steering -= steerSpeed; 
+                    else if (keys.ArrowRight) steering += steerSpeed; 
+                    else steering *= 0.5; 
                     
-                    // Trava o limite de giro do volante entre -1 e 1
                     steering = Math.max(-1, Math.min(1, steering));
-
                     angle += currentTurnSpeed * steering * turnDirection;
                 }
 
                 if (speed > currentMaxSpeed) speed = currentMaxSpeed;
                 if (speed < -currentMaxSpeed / 2) speed = -currentMaxSpeed / 2;
 
-                // --- NOVO: EFEITO "AUTORAMA" (SNAP TO ROAD) MELHORADO ---
                 if (isDriving && onRoad && closestSeg && !isTurningIntent && Math.abs(speed) > 0.1) {
                     let Rx = closestSeg.w.x - closestSeg.v.x;
                     let Ry = closestSeg.w.y - closestSeg.v.y;
@@ -1092,29 +1099,21 @@
 
                     if (R_len > 0) {
                         let radV = angle * Math.PI / 180;
-                        let Vx = Math.sin(radV);
-                        let Vy = Math.cos(radV);
+                        let Vx = Math.sin(radV); let Vy = Math.cos(radV);
                         let dotProduct = (Rx * Vx + Ry * Vy);
 
-                        // Descobre para qual lado da reta o carro está apontando
                         let targetRx = dotProduct > 0 ? Rx : -Rx;
                         let targetRy = dotProduct > 0 ? Ry : -Ry;
 
                         let targetAngle = Math.atan2(targetRx, targetRy) * 180 / Math.PI;
 
-                        // Normaliza a diferença do ângulo
                         let diffAngle = targetAngle - angle;
                         while (diffAngle > 180) diffAngle -= 360;
                         while (diffAngle < -180) diffAngle += 360;
 
-                        // "ARREBENTAR O SNAP": Tolerância reduzida de 35 para 15 graus!
-                        // Se a rua virar muito forte de uma vez, o íman solta e o carro vai reto!
                         if (Math.abs(diffAngle) < 15) { 
-                            // 1. Suaviza o volante para ficar reto (Força reduzida para 6%)
-                            // Curvas suaves dão conta, curvas fechadas não!
                             angle += diffAngle * 0.06;
 
-                            // 2. Descobre o ponto magnético na pista (Efeito Slot Car)
                             let l2 = R_len * R_len;
                             let t = ((carMeters.x - closestSeg.v.x) * Rx + (carMeters.y - closestSeg.v.y) * Ry) / l2;
                             t = Math.max(0, Math.min(1, t));
@@ -1122,22 +1121,14 @@
                             let targetPx = closestSeg.v.x + t * Rx;
                             let targetPy = closestSeg.v.y + t * Ry;
 
-                            // Se for via dupla, o trilho magnético fica na faixa da direita (2m do centro)
                             if (closestSeg.oneway === 0) {
-                                let nx = Rx / R_len;
-                                let ny = Ry / R_len;
+                                let nx = Rx / R_len; let ny = Ry / R_len;
                                 let offsetDist = 2.0; 
-                                if (dotProduct > 0) {
-                                    targetPx += ny * offsetDist;
-                                    targetPy += -nx * offsetDist;
-                                } else {
-                                    targetPx += -ny * offsetDist;
-                                    targetPy += nx * offsetDist;
-                                }
+                                if (dotProduct > 0) { targetPx += ny * offsetDist; targetPy += -nx * offsetDist; } 
+                                else { targetPx += -ny * offsetDist; targetPy += nx * offsetDist; }
                             }
 
-                            // 3. Puxa o carro lateralmente para o trilho
-                            let pullFactor = 0.05 * Math.abs(speed); // Puxão magnético mais fraco para permitir "escapadas"
+                            let pullFactor = 0.05 * Math.abs(speed); 
                             if (pullFactor > 0.12) pullFactor = 0.12;
                             
                             let dX = targetPx - carMeters.x;
@@ -1181,18 +1172,15 @@
                 if (isDriving) {
                     reputation -= 5.0; health -= 10; 
                     checkCarVisuals();
-                    if (health <= 0) {
-                        triggerWasted("CARRO DESTRUÍDO!");
-                    } else {
+                    if (health <= 0) { triggerWasted("CARRO DESTRUÍDO!"); } 
+                    else {
                         statusColor = "#f44336";
                         isHitFlashing = true; 
                         carElement.style.background = "yellow";
                         carElement.style.boxShadow = "0 0 20px 10px yellow";
                         setTimeout(() => {
                             isHitFlashing = false;
-                            if (!isWasted && isDriving) {
-                                carElement.style.background = "#d32f2f";
-                            }
+                            if (!isWasted && isDriving) carElement.style.background = "#d32f2f";
                         }, 150);
                     }
                 } else { autoWalkToCar = false; }
@@ -1200,6 +1188,27 @@
                 lat = nextLat; lng = nextLng;
             }
 
+            let stars = 0;
+            if (reputation < 0) stars = 5;          
+            else if (reputation < 500) stars = 4;   
+            else if (reputation < 750) stars = 3;   
+            else if (reputation < 900) stars = 2;   
+            else if (reputation < 985) stars = 1;   
+
+            for (let i = 1; i <= 5; i++) {
+                const starEl = document.getElementById(`star-${i}`);
+                if (i <= stars) starEl.classList.add('active');
+                else starEl.classList.remove('active');
+            }
+
+            if (Math.abs(speed) > 0.05) {
+                let basePoints = 0.1; 
+                let starBonus = stars * 0.05; 
+                survivalScore += (basePoints + starBonus);
+            }
+        }
+
+        function updateRender() {
             if (map) map.setView([lat, lng], 20, { animate: false }); 
 
             if (isDriving) {
@@ -1211,12 +1220,10 @@
                 playerElement.style.transform = `rotate(${angle}deg) scale(0.8)`; 
                 
                 if (Math.abs(speed) > 0.01) {
-                    walkCycle += speed; 
                     let footOffset = Math.sin(walkCycle * 4) * 4; 
                     footL.style.transform = `translateY(${footOffset}px)`;
                     footR.style.transform = `translateY(${-footOffset}px)`;
                 } else {
-                    walkCycle = 0; 
                     footL.style.transform = `translateY(0px)`;
                     footR.style.transform = `translateY(0px)`;
                 }
@@ -1257,29 +1264,10 @@
                 thoughtBubbleElement.style.display = 'none';
             }
 
-            let stars = 0;
-            if (reputation < 0) stars = 5;          
-            else if (reputation < 500) stars = 4;   
-            else if (reputation < 750) stars = 3;   
-            else if (reputation < 900) stars = 2;   
-            else if (reputation < 985) stars = 1;   
-
-            for (let i = 1; i <= 5; i++) {
-                const starEl = document.getElementById(`star-${i}`);
-                if (i <= stars) starEl.classList.add('active');
-                else starEl.classList.remove('active');
-            }
-
-            if (Math.abs(speed) > 0.05) {
-                let basePoints = 0.1; 
-                let starBonus = stars * 0.05; 
-                survivalScore += (basePoints + starBonus);
-            }
-
             survivalScoreElement.innerText = Math.floor(survivalScore);
             repUiElement.style.borderColor = statusColor;
 
-            // FADE OUT da Interface quando está rápido (Limpa a visão do Celular)
+            // FADE OUT da Interface quando está rápido
             if (displaySpeed !== 0 && isDriving) {
                 instructionsElement.style.opacity = '0'; 
                 titleElement.style.opacity = '0';
@@ -1293,8 +1281,6 @@
                 searchElement.style.pointerEvents = 'auto';
                 instructionsElement.style.pointerEvents = 'auto';
             }
-
-            requestAnimationFrame(gameLoop);
         }
     </script>
 </body>
