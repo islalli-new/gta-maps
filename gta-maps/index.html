@@ -353,6 +353,7 @@
             height: 100%; width: 0%; background: #d32f2f;
             transition: width 0.3s ease;
         }
+        #map-status {
             position: absolute;
             bottom: 90px; left: 20px;
             background: rgba(0,0,0,0.7); color: #ffeb3b;
@@ -777,7 +778,7 @@
         }
 
         // ============================================================
-        // RESTO DO JOGO (igual ao original, usando as novas funções)
+        // RESTO DO JOGO 
         // ============================================================
 
         let map;
@@ -1498,11 +1499,9 @@
 
         // ============================================================
         // HITBOX RETANGULAR (OBB — Oriented Bounding Box)
-        // Cada carro tem: largura W=4m, comprimento L=8m
-        // Colisão OBB vs OBB via SAT (Separating Axis Theorem) simplificado
         // ============================================================
-        const CAR_W = 1.8;   // metade da largura  (total ~3.6m — casa com 14px no zoom 20)
-        const CAR_L = 3.2;   // metade do comprimento (total ~6.4m — casa com 28px no zoom 20)
+        const CAR_W = 0.9;   // metade da largura  (Ajustado para ~1.8m — casa com 14px no zoom 20)
+        const CAR_L = 1.8;   // metade do comprimento (Ajustado para ~3.6m — casa com 28px no zoom 20)
 
         // Retorna os 4 vértices do OBB de um carro (posição em metros, ângulo em graus)
         function getOBBVertices(cx, cy, angleDeg) {
