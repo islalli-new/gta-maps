@@ -234,8 +234,125 @@
             animation: blink 1s infinite alternate;
         }
 
-        /* Status de carregamento do mapa */
-        #map-status {
+        /* ── DEBUG OVERLAY ─────────────────────────────── */
+        #debug-svg {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none; z-index: 8;
+            display: none;
+        }
+        #debug-svg.active { display: block; }
+        .debug-road { stroke: rgba(255,200,0,0.55); stroke-width: 2; fill: none; }
+        .debug-building { stroke: rgba(255,80,80,0.5); stroke-width: 1.5; fill: rgba(255,80,80,0.07); }
+        .debug-obb { stroke: lime; stroke-width: 1.5; fill: none; }
+
+        #debug-btn {
+            position: absolute; bottom: 20px; right: 20px;
+            background: rgba(0,0,0,0.7); color: #ffeb3b;
+            border: 1px solid #ffeb3b; border-radius: 6px;
+            padding: 5px 10px; font-size: 11px; cursor: pointer;
+            z-index: 50; display: none;
+        }
+        #debug-btn.visible { display: block; }
+
+        /* ── CITY SELECT SCREEN ────────────────────────── */
+        #city-select {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #0a0a0a;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 500; font-family: 'Courier New', monospace;
+        }
+        #city-select h1 {
+            color: #fff; font-size: 52px; font-weight: 900;
+            font-family: Impact, sans-serif; letter-spacing: 4px;
+            font-style: italic; margin: 0 0 4px 0;
+            text-shadow: 3px 3px 0 #d32f2f;
+        }
+        #city-select .subtitle {
+            color: #888; font-size: 13px; letter-spacing: 3px;
+            text-transform: uppercase; margin-bottom: 36px;
+        }
+        .city-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 12px; width: min(520px, 92vw); margin-bottom: 16px;
+        }
+        .city-btn {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px; padding: 16px 18px;
+            color: #fff; cursor: pointer; text-align: left;
+            transition: background 0.18s, border-color 0.18s, transform 0.12s;
+        }
+        .city-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.4); transform: scale(1.02); }
+        .city-btn .flag { font-size: 22px; display: block; margin-bottom: 6px; }
+        .city-btn .city-name { font-size: 16px; font-weight: bold; }
+        .city-btn .city-desc { font-size: 11px; color: #888; margin-top: 2px; }
+        .city-btn.special { border-color: rgba(211,47,47,0.5); }
+        .city-btn.special:hover { border-color: #d32f2f; background: rgba(211,47,47,0.12); }
+
+        .city-divider {
+            color: #444; font-size: 11px; letter-spacing: 2px;
+            text-transform: uppercase; margin: 8px 0; width: min(520px,92vw); text-align: center;
+        }
+
+        /* Search box dentro da city-select */
+        #city-search-wrap {
+            width: min(520px,92vw); display: none; flex-direction: column; gap: 8px;
+        }
+        #city-search-wrap.visible { display: flex; }
+        #city-search-input {
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px; padding: 12px 14px; color: #fff; font-size: 15px;
+            font-family: inherit; outline: none; width: 100%; box-sizing: border-box;
+        }
+        #city-search-input::placeholder { color: #666; }
+        #city-search-results { display: flex; flex-direction: column; gap: 6px; }
+        .search-result-btn {
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px; padding: 11px 14px; color: #ddd; cursor: pointer;
+            text-align: left; font-size: 13px; transition: background 0.15s;
+        }
+        .search-result-btn:hover { background: rgba(255,255,255,0.1); }
+
+        /* ── CUTSCENE / LOADING ────────────────────────── */
+        #cutscene {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 400;
+            display: none; flex-direction: column;
+            align-items: center; justify-content: flex-end;
+            padding-bottom: 80px; box-sizing: border-box;
+        }
+        #cutscene.active { display: flex; }
+        #cutscene-bars-top, #cutscene-bars-bot {
+            position: absolute; left: 0; right: 0; height: 70px;
+            background: #000; z-index: 2;
+            transition: height 0.6s ease;
+        }
+        #cutscene-bars-top { top: 0; }
+        #cutscene-bars-bot { bottom: 0; }
+        #cutscene-city-name {
+            color: #fff; font-size: 42px; font-weight: 900;
+            font-family: Impact, sans-serif; letter-spacing: 3px;
+            font-style: italic; z-index: 3; text-align: center;
+            text-shadow: 2px 2px 0 #000;
+            opacity: 0; transition: opacity 0.5s ease;
+        }
+        #cutscene-status {
+            color: #888; font-size: 12px; letter-spacing: 3px;
+            text-transform: uppercase; z-index: 3; margin-top: 10px;
+            opacity: 0; transition: opacity 0.4s ease 0.3s;
+        }
+        #cutscene-progress-wrap {
+            width: min(340px, 80vw); height: 3px;
+            background: rgba(255,255,255,0.1); border-radius: 2px;
+            margin-top: 18px; overflow: hidden; z-index: 3;
+            opacity: 0; transition: opacity 0.4s ease 0.4s;
+        }
+        #cutscene-progress {
+            height: 100%; width: 0%; background: #d32f2f;
+            transition: width 0.3s ease;
+        }
             position: absolute;
             bottom: 90px; left: 20px;
             background: rgba(0,0,0,0.7); color: #ffeb3b;
@@ -349,6 +466,70 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
+
+    <!-- ── CITY SELECT SCREEN ─────────────────────────────── -->
+    <div id="city-select">
+        <h1>GTA MAPS</h1>
+        <div class="subtitle">Escolha onde dirigir</div>
+
+        <div class="city-grid" id="city-grid">
+            <button class="city-btn" data-lat="40.7580" data-lng="-73.9855" data-name="Nova York">
+                <span class="flag">🗽</span>
+                <div class="city-name">Nova York</div>
+                <div class="city-desc">Times Square, Manhattan</div>
+            </button>
+            <button class="city-btn" data-lat="48.8584" data-lng="2.2945" data-name="Paris">
+                <span class="flag">🗼</span>
+                <div class="city-name">Paris</div>
+                <div class="city-desc">Torre Eiffel, França</div>
+            </button>
+            <button class="city-btn" data-lat="35.6762" data-lng="139.6503" data-name="Tóquio">
+                <span class="flag">🗾</span>
+                <div class="city-name">Tóquio</div>
+                <div class="city-desc">Shibuya, Japão</div>
+            </button>
+            <button class="city-btn" data-lat="-23.5505" data-lng="-46.6333" data-name="São Paulo">
+                <span class="flag">🇧🇷</span>
+                <div class="city-name">São Paulo</div>
+                <div class="city-desc">Av. Paulista, Brasil</div>
+            </button>
+        </div>
+
+        <div class="city-divider">── especial ──</div>
+
+        <div class="city-grid" style="margin-bottom:0">
+            <button class="city-btn special" id="btn-gps">
+                <span class="flag">📍</span>
+                <div class="city-name">Minha localização</div>
+                <div class="city-desc">Usar GPS do navegador</div>
+            </button>
+            <button class="city-btn special" id="btn-custom">
+                <span class="flag">🔍</span>
+                <div class="city-name">Endereço especial</div>
+                <div class="city-desc">Digitar um endereço</div>
+            </button>
+        </div>
+
+        <div id="city-search-wrap">
+            <input type="text" id="city-search-input" placeholder="Ex: Rua Augusta, São Paulo...">
+            <div id="city-search-results"></div>
+        </div>
+    </div>
+
+    <!-- ── CUTSCENE / LOADING ──────────────────────────────── -->
+    <div id="cutscene">
+        <div id="cutscene-bars-top"></div>
+        <div id="cutscene-bars-bot"></div>
+        <div id="cutscene-city-name">Nova York</div>
+        <div id="cutscene-status">Carregando mapa...</div>
+        <div id="cutscene-progress-wrap">
+            <div id="cutscene-progress"></div>
+        </div>
+    </div>
+
+    <!-- ── DEBUG SVG OVERLAY ───────────────────────────────── -->
+    <svg id="debug-svg"></svg>
+    <button id="debug-btn">🔧 DEBUG</button>
 
     <div id="map"></div>
 
@@ -812,10 +993,9 @@
         }
 
         async function spawnPlayer(targetLat, targetLng) {
+            // Usado ao reiniciar — não mostra city-select, vai direto pra cutscene
             isSpawning = true;
-            
-            loadingTextElement.style.display = 'block';
-            
+
             carElement.style.display = 'none';
             playerElement.style.display = 'none';
             uiElement.style.opacity = '0';
@@ -825,38 +1005,18 @@
             titleElement.style.opacity = '0';
             instructionsElement.style.pointerEvents = 'none';
 
-            if (map) {
-                map.setView([targetLat, targetLng], 13, { animate: false });
-            }
+            await loadEnvironment(targetLat, targetLng, false);
 
-            await loadEnvironment(targetLat, targetLng, true);
-
-            loadingTextElement.style.display = 'none';
+            let snapPt = snapToNearestRoad(targetLat, targetLng);
+            lat = snapPt.lat; lng = snapPt.lng;
 
             if (map) {
-                map.flyTo([lat, lng], 20, { animate: true, duration: 2.5 });
-                
-                setTimeout(() => {
-                    speed = 0;
-                    angle = 0;
-                    steering = 0;
-                    isDriving = true;
-                    autoWalkToCar = false;
-                    health = maxHealth; 
-                    
-                    carElement.style.display = 'block';
-                    uiElement.style.opacity = '1';
-                    repUiElement.style.opacity = '1';
-                    searchElement.style.opacity = '1';
-                    instructionsElement.style.opacity = '1'; 
-                    titleElement.style.opacity = '1';
-                    instructionsElement.style.pointerEvents = 'auto';
-                    
-                    for(let k in keys) keys[k] = false;
-                    
-                    isSpawning = false; 
-                }, 2600);
+                map.setView([lat, lng], 14, { animate: false });
+                await flyToZoom(lat, lng, 20, 1.8);
             }
+
+            beginGame();
+            isSpawning = false;
         }
 
         function handleSpacebar() {
@@ -882,33 +1042,274 @@
             }
         }
 
-        function initMap() {
+        // ── DEBUG OVERLAY ──────────────────────────────────────────
+        let debugMode = false;
+        const debugSvg = document.getElementById('debug-svg');
+        const debugBtn = document.getElementById('debug-btn');
+
+        debugBtn.addEventListener('click', () => {
+            debugMode = !debugMode;
+            debugSvg.classList.toggle('active', debugMode);
+            debugBtn.innerText = debugMode ? '🔧 OCULTAR' : '🔧 DEBUG';
+            if (!debugMode) debugSvg.innerHTML = '';
+            else drawDebugOverlay();
+        });
+
+        function metersToScreen(mx, my) {
+            if (!map || envCenterLat === 0) return null;
+            const pos = metersToPos(mx, my);
+            return map.latLngToContainerPoint([pos.lat, pos.lng]);
+        }
+
+        function drawDebugOverlay() {
+            if (!debugMode || !map) return;
+            debugSvg.innerHTML = '';
+
+            // Roads — linhas amarelas
+            for (let seg of roadSegments) {
+                let a = metersToScreen(seg.v.x, seg.v.y);
+                let b = metersToScreen(seg.w.x, seg.w.y);
+                if (!a || !b) continue;
+                let line = document.createElementNS('http://www.w3.org/2000/svg','line');
+                line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
+                line.setAttribute('x2', b.x); line.setAttribute('y2', b.y);
+                line.setAttribute('class', 'debug-road');
+                debugSvg.appendChild(line);
+            }
+
+            // Buildings — polígonos vermelhos
+            for (let poly of buildingPolygons) {
+                let pts = poly.map(p => {
+                    let pm2 = posToMeters(p[1], p[0]);
+                    let sc = metersToScreen(pm2.x, pm2.y);
+                    return sc ? `${sc.x},${sc.y}` : null;
+                }).filter(Boolean).join(' ');
+                if (!pts) continue;
+                let el = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+                el.setAttribute('points', pts);
+                el.setAttribute('class', 'debug-building');
+                debugSvg.appendChild(el);
+            }
+
+            // OBB do jogador — caixa verde
+            if (envCenterLat !== 0) {
+                let pm2 = posToMeters(lat, lng);
+                let verts = getOBBVertices(pm2.x, pm2.y, angle);
+                let pts = verts.map(v => {
+                    let sc = metersToScreen(v.x, v.y);
+                    return sc ? `${sc.x},${sc.y}` : null;
+                }).filter(Boolean).join(' ');
+                if (pts) {
+                    let el = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+                    el.setAttribute('points', pts);
+                    el.setAttribute('class', 'debug-obb');
+                    debugSvg.appendChild(el);
+                }
+            }
+
+            // OBBs dos policiais — caixas verdes menores
+            for (let p of policeCars) {
+                let pm2 = posToMeters(p.lat, p.lng);
+                let verts = getOBBVertices(pm2.x, pm2.y, p.angle);
+                let pts = verts.map(v => {
+                    let sc = metersToScreen(v.x, v.y);
+                    return sc ? `${sc.x},${sc.y}` : null;
+                }).filter(Boolean).join(' ');
+                if (pts) {
+                    let el = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+                    el.setAttribute('points', pts);
+                    el.setAttribute('class', 'debug-obb');
+                    el.style.stroke = p.state === 'ram' ? 'orange' : (p.state === 'stunned' ? 'gray' : 'lime');
+                    debugSvg.appendChild(el);
+                }
+            }
+        }
+
+        // ── CITY SELECT ────────────────────────────────────────────
+        const citySelect  = document.getElementById('city-select');
+        const cutsceneEl  = document.getElementById('cutscene');
+        const cutCityName = document.getElementById('cutscene-city-name');
+        const cutStatus   = document.getElementById('cutscene-status');
+        const cutProgress = document.getElementById('cutscene-progress');
+        const cutProgressWrap = document.getElementById('cutscene-progress-wrap');
+
+        // Botões de cidade fixa
+        document.querySelectorAll('.city-btn[data-lat]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                let tLat = parseFloat(btn.dataset.lat);
+                let tLng = parseFloat(btn.dataset.lng);
+                let name = btn.dataset.name;
+                startCutscene(tLat, tLng, name);
+            });
+        });
+
+        // GPS
+        document.getElementById('btn-gps').addEventListener('click', () => {
+            if (!navigator.geolocation) { alert('GPS não suportado'); return; }
+            navigator.geolocation.getCurrentPosition(pos => {
+                startCutscene(pos.coords.latitude, pos.coords.longitude, 'Minha Localização');
+            }, () => { alert('Não foi possível obter localização'); });
+        });
+
+        // Endereço customizado
+        const searchWrap    = document.getElementById('city-search-wrap');
+        const searchInput   = document.getElementById('city-search-input');
+        const searchResults = document.getElementById('city-search-results');
+
+        document.getElementById('btn-custom').addEventListener('click', () => {
+            searchWrap.classList.toggle('visible');
+            if (searchWrap.classList.contains('visible')) searchInput.focus();
+        });
+
+        let searchDebounce;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchDebounce);
+            searchResults.innerHTML = '';
+            const q = searchInput.value.trim();
+            if (q.length < 3) return;
+            searchDebounce = setTimeout(() => doAddressSearch(q), 500);
+        });
+        searchInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { clearTimeout(searchDebounce); doAddressSearch(searchInput.value.trim()); }
+        });
+
+        async function doAddressSearch(q) {
+            searchResults.innerHTML = '<div style="color:#666;font-size:12px;padding:8px">Buscando...</div>';
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=4`, { headers:{'Accept-Language':'pt-BR'} });
+                const data = await res.json();
+                searchResults.innerHTML = '';
+                if (!data.length) { searchResults.innerHTML = '<div style="color:#666;font-size:12px;padding:8px">Nada encontrado</div>'; return; }
+                data.forEach(item => {
+                    let btn2 = document.createElement('button');
+                    btn2.className = 'search-result-btn';
+                    btn2.textContent = item.display_name;
+                    btn2.addEventListener('click', () => {
+                        startCutscene(parseFloat(item.lat), parseFloat(item.lon), item.display_name.split(',')[0]);
+                    });
+                    searchResults.appendChild(btn2);
+                });
+            } catch(e) { searchResults.innerHTML = '<div style="color:#f44;font-size:12px;padding:8px">Erro na busca</div>'; }
+        }
+
+        // ── CUTSCENE + LOAD ────────────────────────────────────────
+        async function startCutscene(targetLat, targetLng, cityName) {
+            // 1. Esconde seleção, mostra cutscene
+            citySelect.style.display = 'none';
+            cutsceneEl.classList.add('active');
+            cutCityName.innerText = cityName;
+
+            // Anima entrada do texto
+            await sleep(200);
+            cutCityName.style.opacity = '1';
+            cutStatus.style.opacity = '1';
+            cutProgressWrap.style.opacity = '1';
+
+            setProgress(5, 'Conectando ao mapa...');
+
+            // 2. Inicializa mapa (se ainda não foi)
+            if (!map) initMap(targetLat, targetLng);
+            else map.setView([targetLat, targetLng], 14, { animate: false });
+
+            setProgress(15, 'Buscando dados da região...');
+
+            // 3. Carrega dados OSM (ruas + prédios) em raio pequeno
+            await loadEnvironment(targetLat, targetLng, false);
+            setProgress(55, 'Processando vias...');
+
+            // 4. Snap para a via mais próxima (ponto real na rua)
+            let snapPt = snapToNearestRoad(targetLat, targetLng);
+            lat = snapPt.lat; lng = snapPt.lng;
+            setProgress(70, 'Posicionando veículo...');
+
+            // 5. Zoom cinematográfico com o mapa já carregado
+            await sleep(300);
+            setProgress(80, 'Iniciando...');
+
+            map.setView([lat, lng], 14, { animate: false });
+            await flyToZoom(lat, lng, 20, 2.2);
+            setProgress(100, 'Pronto!');
+
+            await sleep(400);
+
+            // 6. Fecha cutscene e inicia jogo
+            cutsceneEl.classList.remove('active');
+            debugBtn.classList.add('visible');
+            beginGame();
+        }
+
+        function setProgress(pct, msg) {
+            cutProgress.style.width = pct + '%';
+            cutStatus.innerText = msg;
+        }
+
+        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+        function flyToZoom(toLat, toLng, toZoom, durationSec) {
+            return new Promise(resolve => {
+                map.flyTo([toLat, toLng], toZoom, { animate: true, duration: durationSec });
+                setTimeout(resolve, durationSec * 1000 + 100);
+            });
+        }
+
+        // Snap para o ponto mais próximo em qualquer segmento de rua carregado
+        function snapToNearestRoad(tLat, tLng) {
+            if (!roadSegments.length) return { lat: tLat, lng: tLng };
+            let tm = posToMeters(tLat, tLng);
+            let best = null, bestDist = Infinity;
+
+            for (let seg of roadSegments) {
+                // Projeção do ponto no segmento
+                let dx = seg.w.x - seg.v.x, dy = seg.w.y - seg.v.y;
+                let len2 = dx*dx + dy*dy;
+                let t = len2 > 0 ? Math.max(0, Math.min(1, ((tm.x - seg.v.x)*dx + (tm.y - seg.v.y)*dy) / len2)) : 0;
+                let px = seg.v.x + t*dx, py = seg.v.y + t*dy;
+                let d = mDist(tm.x, tm.y, px, py);
+                if (d < bestDist) { bestDist = d; best = metersToPos(px, py); }
+            }
+            return best || { lat: tLat, lng: tLng };
+        }
+
+        function initMap(cLat, cLng) {
             map = L.map('map', {
                 zoomControl: false, keyboard: false, dragging: false,
                 scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false,
-                touchZoom: false, tap: false 
-            }).setView([lat, lng], 13); 
+                touchZoom: false, tap: false
+            }).setView([cLat || lat, cLng || lng], 14);
 
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Tiles &copy; Esri', maxZoom: 22, maxNativeZoom: 19   
+                attribution: 'Tiles &copy; Esri', maxZoom: 22, maxNativeZoom: 19
             }).addTo(map);
 
             requestAnimationFrame(gameLoop);
-            spawnPlayer(lat, lng); 
+        }
+
+        function beginGame() {
+            speed = 0; angle = 0; steering = 0;
+            isDriving = true; autoWalkToCar = false;
+            health = maxHealth; isWasted = false;
+            reputation = 1000; survivalScore = 0;
+            stamina = maxStamina; isExhausted = false;
+
+            carElement.style.display = 'block';
+            carElement.style.background = '#d32f2f';
+            carElement.style.boxShadow = '0 8px 12px rgba(0,0,0,0.6)';
+            playerElement.style.display = 'none';
+            uiElement.style.opacity = '1';
+            repUiElement.style.opacity = '1';
+            searchElement.style.opacity = '1';
+            instructionsElement.style.opacity = '1';
+            instructionsElement.style.pointerEvents = 'auto';
+            titleElement.style.opacity = '1';
+
             checkCarVisuals();
+            for (let k in keys) keys[k] = false;
         }
 
-        async function startUp() {
-            const loc = await getIPLocation();
-            if (loc) {
-                lat = loc.lat;
-                lng = loc.lng;
-            }
-            // Se tudo falhar, usa São Paulo como padrão
-            initMap();
-        }
-
-        window.onload = startUp;
+        window.onload = () => {
+            // Só mostra a tela de seleção — não inicializa mapa ainda
+            citySelect.style.display = 'flex';
+        };
 
         function toMeters(pLat, pLng) {
             const x = (pLng - envCenterLng) * 111320 * Math.cos(envCenterLat * Math.PI / 180);
@@ -943,11 +1344,13 @@
             if (isFetchingEnvironment) return; 
             isFetchingEnvironment = true;
 
-            const radius = 600; 
-            const query = `[out:json][timeout:15];
+            // Raio inicial menor (200m) = query rápida e leve ao spawnar
+            // Reload enquanto joga usa 300m para ter margem de segurança
+            const radius = snapToRoad ? 200 : 300;
+            const query = `[out:json][timeout:12];
             (
               way["building"](around:${radius},${centerLat},${centerLng});
-              way["highway"]["highway"!~"footway|pedestrian|path|steps"](around:${radius},${centerLat},${centerLng});
+              way["highway"]["highway"!~"footway|pedestrian|path|steps|cycleway"](around:${radius},${centerLat},${centerLng});
             );
             out tags geom;`;
 
@@ -1093,80 +1496,165 @@
         //   'stunned' → tonto após colisão, desacelera e não toma decisões
         // ============================================================
 
-        const CAR_RADIUS   = 3.5;  // metros — raio de cada carro (jogador e polícia)
-        const COLLIDE_DIST = CAR_RADIUS * 2;  // 7 m → corpos se tocam
+        // ============================================================
+        // HITBOX RETANGULAR (OBB — Oriented Bounding Box)
+        // Cada carro tem: largura W=4m, comprimento L=8m
+        // Colisão OBB vs OBB via SAT (Separating Axis Theorem) simplificado
+        // ============================================================
+        const CAR_W = 1.8;   // metade da largura  (total ~3.6m — casa com 14px no zoom 20)
+        const CAR_L = 3.2;   // metade do comprimento (total ~6.4m — casa com 28px no zoom 20)
 
-        // Helpers de posição em metros ─────────────────────────────
-        function posToMeters(pLat, pLng) {
-            return {
-                x: (pLng - envCenterLng) * 111320 * Math.cos(envCenterLat * Math.PI / 180),
-                y: (pLat  - envCenterLat) * 111320
-            };
-        }
-        function metersToPos(mx, my) {
-            return {
-                lat: envCenterLat + my / 111320,
-                lng: envCenterLng + mx / (111320 * Math.cos(envCenterLat * Math.PI / 180))
-            };
-        }
-        function mDist(ax, ay, bx, by) {
-            return Math.sqrt((ax-bx)**2 + (ay-by)**2);
+        // Retorna os 4 vértices do OBB de um carro (posição em metros, ângulo em graus)
+        function getOBBVertices(cx, cy, angleDeg) {
+            const a = angleDeg * Math.PI / 180;
+            const cos = Math.cos(a), sin = Math.sin(a);
+            // Eixos locais: frente/trás = sin/cos, direita/esquerda = cos/-sin
+            return [
+                { x: cx + sin * CAR_L  + cos * CAR_W,  y: cy + cos * CAR_L  - sin * CAR_W  },
+                { x: cx + sin * CAR_L  - cos * CAR_W,  y: cy + cos * CAR_L  + sin * CAR_W  },
+                { x: cx - sin * CAR_L  - cos * CAR_W,  y: cy - cos * CAR_L  + sin * CAR_W  },
+                { x: cx - sin * CAR_L  + cos * CAR_W,  y: cy - cos * CAR_L  - sin * CAR_W  },
+            ];
         }
 
-        // Resolve colisão elástica entre dois corpos circulares.
-        // Recebe posições (mx,my) e velocidades (vx,vy) de cada um em m/frame.
-        // Retorna novas velocidades e posições já separadas.
-        function resolveCircleCollision(ax, ay, avx, avy, bx, by, bvx, bvy, restitution = 0.55) {
-            let dx = bx - ax, dy = by - ay;
-            let dist = Math.sqrt(dx*dx + dy*dy) || 0.001;
-            // Eixo de colisão normalizado
-            let nx = dx / dist, ny = dy / dist;
-
-            // Separar os corpos — empurra cada um metade da sobreposição para fora
-            let overlap = COLLIDE_DIST - dist;
-            if (overlap > 0) {
-                let sep = overlap / 2 + 0.05;
-                ax -= nx * sep;  ay -= ny * sep;
-                bx += nx * sep;  by += ny * sep;
+        // Projeta um array de vértices num eixo e retorna [min, max]
+        function projectOBB(verts, axX, axY) {
+            let mn = Infinity, mx = -Infinity;
+            for (let v of verts) {
+                let p = v.x * axX + v.y * axY;
+                if (p < mn) mn = p;
+                if (p > mx) mx = p;
             }
+            return [mn, mx];
+        }
 
-            // Velocidade relativa projetada no eixo de colisão
-            let dvx = avx - bvx, dvy = avy - bvy;
-            let dot = dvx * nx + dvy * ny;
+        // SAT entre dois OBBs. Retorna {overlap, nx, ny} ou null se separados.
+        // nx,ny = eixo de menor penetração, apontando de A para B.
+        function obbSAT(axA, ayA, angA, axB, ayB, angB) {
+            const vA = getOBBVertices(axA, ayA, angA);
+            const vB = getOBBVertices(axB, ayB, angB);
 
-            // Só resolve se estiverem se aproximando (dot > 0)
+            // 4 eixos: 2 de cada OBB
+            const aRad = angA * Math.PI / 180;
+            const bRad = angB * Math.PI / 180;
+            const axes = [
+                {  x: Math.sin(aRad),  y: Math.cos(aRad)  },
+                {  x: Math.cos(aRad),  y: -Math.sin(aRad) },
+                {  x: Math.sin(bRad),  y: Math.cos(bRad)  },
+                {  x: Math.cos(bRad),  y: -Math.sin(bRad) },
+            ];
+
+            let minOverlap = Infinity, minAxis = null;
+            for (let ax of axes) {
+                let [mnA, mxA] = projectOBB(vA, ax.x, ax.y);
+                let [mnB, mxB] = projectOBB(vB, ax.x, ax.y);
+                let overlap = Math.min(mxA, mxB) - Math.max(mnA, mnB);
+                if (overlap <= 0) return null; // eixo separador encontrado
+                if (overlap < minOverlap) {
+                    minOverlap = overlap;
+                    // Garante que nx,ny aponta de A para B
+                    let sign = (axB - axA) * ax.x + (ayB - ayA) * ax.y >= 0 ? 1 : -1;
+                    minAxis = { x: ax.x * sign, y: ax.y * sign };
+                }
+            }
+            return { overlap: minOverlap, nx: minAxis.x, ny: minAxis.y };
+        }
+
+        // Resolve colisão OBB elástica.
+        // Recebe centros, velocidades (m/frame) e ângulos.
+        // Retorna novas posições e velocidades.
+        function resolveOBBCollision(ax, ay, avx, avy, angA,
+                                     bx, by, bvx, bvy, angB,
+                                     restitution = 0.5) {
+            const col = obbSAT(ax, ay, angA, bx, by, angB);
+            if (!col) return null;
+
+            const { overlap, nx, ny } = col;
+
+            // Separa os corpos (metade cada)
+            const sep = overlap / 2 + 0.05;
+            ax -= nx * sep;  ay -= ny * sep;
+            bx += nx * sep;  by += ny * sep;
+
+            // Impulso ao longo do eixo de colisão
+            const dvx = avx - bvx, dvy = avy - bvy;
+            const dot  = dvx * nx + dvy * ny;
             if (dot > 0) {
-                let imp = dot * (1 + restitution) / 2; // massa igual → divide por 2
+                const imp = dot * (1 + restitution) / 2;
                 avx -= imp * nx;  avy -= imp * ny;
                 bvx += imp * nx;  bvy += imp * ny;
             }
             return { ax, ay, avx, avy, bx, by, bvx, bvy };
         }
 
+        // Ponto no interior de um OBB (para teste vs prédios)
+        function pointInOBB(px, py, cx, cy, angleDeg) {
+            const a = -angleDeg * Math.PI / 180; // inverso para espaço local
+            const dx = px - cx, dy = py - cy;
+            const lx = dx * Math.cos(a) - dy * Math.sin(a);
+            const ly = dx * Math.sin(a) + dy * Math.cos(a);
+            return Math.abs(lx) <= CAR_W && Math.abs(ly) <= CAR_L;
+        }
+
+        // Retorna os limites visíveis do mapa em graus (com margem)
+        function getScreenBounds(margin = 20) {
+            if (!map) return null;
+            const b = map.getBounds();
+            return {
+                minLat: b.getSouth() - margin / 111320,
+                maxLat: b.getNorth() + margin / 111320,
+                minLng: b.getWest()  - margin / (111320 * Math.cos(lat * Math.PI / 180)),
+                maxLng: b.getEast()  + margin / (111320 * Math.cos(lat * Math.PI / 180)),
+            };
+        }
+
+        function isOffScreen(pLat, pLng) {
+            const b = getScreenBounds(5);
+            if (!b) return true;
+            return pLat < b.minLat || pLat > b.maxLat || pLng < b.minLng || pLng > b.maxLng;
+        }
+
         function spawnPolice() {
-            let pLat = lat, pLng = lng, pAngle = 0, foundRoad = false;
+            // Encontra segmentos de rua que estejam FORA da tela (margin = 15px além da borda)
+            // e a uma distância razoável do jogador (50-350m)
+            const pm = posToMeters(lat, lng);
+            const bounds = getScreenBounds(0);
+
+            let candidates = [];
 
             if (roadSegments.length > 0) {
-                let shuffled = roadSegments.slice().sort(() => 0.5 - Math.random());
-                for (let seg of shuffled) {
+                for (let seg of roadSegments) {
                     let midX = (seg.v.x + seg.w.x) / 2;
                     let midY = (seg.v.y + seg.w.y) / 2;
-                    let cm = toMeters(lat, lng);
-                    let dist = Math.sqrt((midX-cm.x)**2 + (midY-cm.y)**2);
-                    if (dist > 150 && dist < 350) {
-                        pLat = envCenterLat + midY / 111320;
-                        pLng = envCenterLng + midX / (111320 * Math.cos(envCenterLat * Math.PI / 180));
-                        pAngle = Math.atan2(seg.w.x - seg.v.x, seg.w.y - seg.v.y) * 180 / Math.PI;
-                        foundRoad = true;
-                        break;
-                    }
+                    let d    = mDist(midX, midY, pm.x, pm.y);
+                    if (d < 50 || d > 350) continue;
+
+                    // Converte para lat/lng para testar se está fora da tela
+                    let dest = metersToPos(midX, midY);
+                    if (bounds && dest.lat > bounds.minLat && dest.lat < bounds.maxLat &&
+                                  dest.lng > bounds.minLng && dest.lng < bounds.maxLng) continue;
+
+                    candidates.push({ seg, midX, midY, d });
                 }
             }
-            if (!foundRoad) {
-                let sa = Math.random() * Math.PI * 2;
-                pLat = lat + 200 * Math.cos(sa) / 111320;
-                pLng = lng + 200 * Math.sin(sa) / (111320 * Math.cos(lat * Math.PI / 180));
-                pAngle = sa * 180 / Math.PI + 180;
+
+            // Ordena por distância e sorteia entre os mais próximos
+            candidates.sort((a, b) => a.d - b.d);
+            let pool = candidates.slice(0, Math.min(8, candidates.length));
+
+            let pLat, pLng, pAngle;
+            if (pool.length > 0) {
+                let c = pool[Math.floor(Math.random() * pool.length)];
+                let dest = metersToPos(c.midX, c.midY);
+                pLat   = dest.lat;
+                pLng   = dest.lng;
+                pAngle = Math.atan2(c.seg.w.x - c.seg.v.x, c.seg.w.y - c.seg.v.y) * 180 / Math.PI;
+            } else {
+                // Fallback: nasce num ângulo aleatório a exatamente 280m, fora da tela
+                let spawnAngle = Math.random() * Math.PI * 2;
+                pLat   = lat + 280 * Math.cos(spawnAngle) / 111320;
+                pLng   = lng + 280 * Math.sin(spawnAngle) / (111320 * Math.cos(lat * Math.PI / 180));
+                pAngle = spawnAngle * 180 / Math.PI + 180;
             }
 
             let el = document.createElement('div');
@@ -1183,10 +1671,9 @@
                 lat: pLat, lng: pLng,
                 angle: pAngle,
                 speed: 0.05,
-                // Velocidade em metros/frame nos eixos do mapa (usada na física)
                 vx: 0, vy: 0,
                 element: el,
-                state: 'chase',       // 'chase' | 'ram' | 'avoid' | 'stunned'
+                state: 'chase',
                 stateTimer: 0,
                 ramCooldown: 0,
                 policeCooldown: 0,
@@ -1196,248 +1683,195 @@
             });
         }
 
+        // ── Helpers de posição (usados também fora da polícia) ────────
+        function posToMeters(pLat, pLng) {
+            return {
+                x: (pLng - envCenterLng) * 111320 * Math.cos(envCenterLat * Math.PI / 180),
+                y: (pLat - envCenterLat) * 111320
+            };
+        }
+        function metersToPos(mx, my) {
+            return {
+                lat: envCenterLat + my / 111320,
+                lng: envCenterLng + mx / (111320 * Math.cos(envCenterLat * Math.PI / 180))
+            };
+        }
+        function mDist(ax, ay, bx, by) { return Math.sqrt((ax-bx)**2 + (ay-by)**2); }
+
+        // Testa OBB do carro contra todos os prédios (4 vértices + centro)
+        function obbHitsBuilding(cx, cy, angleDeg) {
+            if (!buildingPolygons.length) return false;
+            const verts = getOBBVertices(cx, cy, angleDeg);
+            // Também inclui o centro como ponto de teste
+            const pts = [...verts, { x: cx, y: cy }];
+            for (let poly of buildingPolygons) {
+                for (let v of pts) {
+                    let pos = metersToPos(v.x, v.y);
+                    if (isPointInPolygon([pos.lng, pos.lat], poly)) return true;
+                }
+            }
+            return false;
+        }
+
         function updatePoliceAI(stars) {
             if (policeCars.length === 0) return;
 
-            const baseSpd        = 0.45 + stars * 0.08;
-            const chaseTurn      = 2.8  + stars * 0.2;
-            const RAM_DIST       = 28;   // metros para iniciar investida
-            const CONTACT_DIST   = COLLIDE_DIST; // = 7 m
+            const baseSpd   = 0.45 + stars * 0.08;
+            const chaseTurn = 2.8  + stars * 0.2;
+            const RAM_DIST  = 28;
 
-            // ── FASE 1: IA + cálculo de próxima posição em metros ──────────
-            // Convertemos o jogador para metros uma vez
-            const pm = posToMeters(lat, lng);
-            // Velocidade do jogador em m/frame
+            const pm   = posToMeters(lat, lng);
             const pRad = angle * Math.PI / 180;
             const pvx  = speed * Math.sin(pRad);
             const pvy  = speed * Math.cos(pRad);
 
-            // Remove policiais muito distantes
+            // Remove muito distantes
             policeCars = policeCars.filter(p => {
-                let d = mDist(...Object.values(posToMeters(p.lat, p.lng)), pm.x, pm.y);
-                if (d > 480) { p.element.remove(); return false; }
+                let cm = posToMeters(p.lat, p.lng);
+                if (mDist(cm.x, cm.y, pm.x, pm.y) > 480) { p.element.remove(); return false; }
                 return true;
             });
 
-            // Calcula a próxima posição de cada viatura (em metros)
-            let nextPositions = policeCars.map(p => {
-                if (p.stateTimer > 0) p.stateTimer--;
-                if (p.ramCooldown > 0) p.ramCooldown--;
+            // ── FASE 1: IA → posição candidata em metros ──────────────────
+            let next = policeCars.map(p => {
+                if (p.stateTimer > 0)     p.stateTimer--;
+                if (p.ramCooldown > 0)    p.ramCooldown--;
                 if (p.policeCooldown > 0) p.policeCooldown--;
 
                 let cm = posToMeters(p.lat, p.lng);
-                let distPlayer = mDist(cm.x, cm.y, pm.x, pm.y);
+                let dp = mDist(cm.x, cm.y, pm.x, pm.y);
 
                 // Anti-stuck
                 p.stuckTimer++;
                 if (p.stuckTimer >= 120) {
-                    let moved = mDist(...Object.values(posToMeters(p.lat, p.lng)),
-                                     ...Object.values(posToMeters(p.lastLat, p.lastLng)));
-                    if (moved < 2) {
+                    let lm = posToMeters(p.lastLat, p.lastLng);
+                    if (mDist(cm.x, cm.y, lm.x, lm.y) < 2) {
                         p.angle += 90 + Math.random() * 60;
                         p.speed  = baseSpd * 0.5;
                         if (p.state !== 'ram') p.state = 'chase';
                     }
-                    p.stuckTimer = 0;
-                    p.lastLat = p.lat; p.lastLng = p.lng;
+                    p.stuckTimer = 0; p.lastLat = p.lat; p.lastLng = p.lng;
                 }
 
-                // ── Máquina de estados ──
                 if (p.state === 'stunned') {
                     p.speed *= 0.85;
                     if (p.stateTimer <= 0) p.state = 'chase';
 
                 } else if (p.state === 'chase') {
-                    let targetAng = Math.atan2(pm.x - cm.x, pm.y - cm.y) * 180 / Math.PI;
-                    let diff = targetAng - p.angle;
-                    while (diff >  180) diff -= 360;
-                    while (diff < -180) diff += 360;
-                    p.angle += Math.max(-chaseTurn, Math.min(chaseTurn, diff * 0.18));
-
-                    let tSpd = distPlayer > 60 ? baseSpd * 1.6 : baseSpd * (0.9 + Math.abs(speed) * 0.5);
-                    p.speed += (tSpd - p.speed) * 0.035;
-                    p.speed  = Math.max(-0.1, Math.min(tSpd * 1.1, p.speed));
-
-                    if (distPlayer < RAM_DIST && p.ramCooldown <= 0 && p.policeCooldown <= 0 && isDriving) {
-                        p.state = 'ram';
-                        p.stateTimer   = 80 + stars * 10;
+                    let tA = Math.atan2(pm.x - cm.x, pm.y - cm.y) * 180 / Math.PI;
+                    let df = tA - p.angle; while (df > 180) df -= 360; while (df < -180) df += 360;
+                    p.angle += Math.max(-chaseTurn, Math.min(chaseTurn, df * 0.18));
+                    let tS = dp > 60 ? baseSpd * 1.6 : baseSpd * (0.9 + Math.abs(speed) * 0.5);
+                    p.speed += (tS - p.speed) * 0.035;
+                    p.speed  = Math.max(-0.1, Math.min(tS * 1.1, p.speed));
+                    if (dp < RAM_DIST && p.ramCooldown <= 0 && p.policeCooldown <= 0 && isDriving) {
+                        p.state = 'ram'; p.stateTimer = 80 + stars * 10;
                         p.ramOffsetSign = Math.random() > 0.5 ? 1 : -1;
                     }
 
                 } else if (p.state === 'ram') {
-                    let baseAng = Math.atan2(pm.x - cm.x, pm.y - cm.y) * 180 / Math.PI;
-                    let offset  = p.ramOffsetSign * Math.max(4, 20 - distPlayer * 0.5);
-                    let tAng    = baseAng + offset;
-                    let diff    = tAng - p.angle;
-                    while (diff >  180) diff -= 360;
-                    while (diff < -180) diff += 360;
-                    p.angle += Math.max(-chaseTurn * 1.5, Math.min(chaseTurn * 1.5, diff * 0.28));
-
-                    let ramSpd = baseSpd * (1.3 + stars * 0.1);
-                    p.speed += (ramSpd - p.speed) * 0.07;
-                    p.speed  = Math.min(ramSpd, p.speed);
-
-                    if (p.stateTimer <= 0) {
-                        p.state = 'chase';
-                        p.ramCooldown = 150 + Math.random() * 60;
-                    }
+                    let bA = Math.atan2(pm.x - cm.x, pm.y - cm.y) * 180 / Math.PI;
+                    let tA = bA + p.ramOffsetSign * Math.max(4, 20 - dp * 0.5);
+                    let df = tA - p.angle; while (df > 180) df -= 360; while (df < -180) df += 360;
+                    p.angle += Math.max(-chaseTurn*1.5, Math.min(chaseTurn*1.5, df * 0.28));
+                    let rS = baseSpd * (1.3 + stars * 0.1);
+                    p.speed += (rS - p.speed) * 0.07; p.speed = Math.min(rS, p.speed);
+                    if (p.stateTimer <= 0) { p.state = 'chase'; p.ramCooldown = 150 + Math.random()*60; }
 
                 } else if (p.state === 'avoid') {
-                    let baseAng = Math.atan2(pm.x - cm.x, pm.y - cm.y) * 180 / Math.PI;
-                    let tAng    = baseAng - p.ramOffsetSign * (50 + Math.random() * 20);
-                    let diff    = tAng - p.angle;
-                    while (diff >  180) diff -= 360;
-                    while (diff < -180) diff += 360;
-                    p.angle += Math.max(-4, Math.min(4, diff * 0.2));
+                    let bA = Math.atan2(pm.x - cm.x, pm.y - cm.y) * 180 / Math.PI;
+                    let tA = bA - p.ramOffsetSign * (50 + Math.random() * 20);
+                    let df = tA - p.angle; while (df > 180) df -= 360; while (df < -180) df += 360;
+                    p.angle += Math.max(-4, Math.min(4, df * 0.2));
                     p.speed *= 0.97;
                     if (p.stateTimer <= 0) p.state = 'chase';
                 }
 
-                // Velocidade em m/frame
                 let rad = p.angle * Math.PI / 180;
                 p.vx = p.speed * Math.sin(rad);
                 p.vy = p.speed * Math.cos(rad);
-
                 return { x: cm.x + p.vx, y: cm.y + p.vy };
             });
 
-            // ── FASE 2: separação de corpos ─────────────────────────────────
-
-            // 2a) Policiais entre si
+            // ── FASE 2a: OBB polícia vs polícia ───────────────────────────
             for (let i = 0; i < policeCars.length; i++) {
                 for (let j = i + 1; j < policeCars.length; j++) {
                     let pi = policeCars[i], pj = policeCars[j];
-                    let ni = nextPositions[i], nj = nextPositions[j];
-
-                    let d = mDist(ni.x, ni.y, nj.x, nj.y);
-                    if (d < COLLIDE_DIST) {
-                        let r = resolveCircleCollision(
-                            ni.x, ni.y, pi.vx, pi.vy,
-                            nj.x, nj.y, pj.vx, pj.vy,
-                            0.5
-                        );
-                        ni.x = r.ax; ni.y = r.ay; pi.vx = r.avx; pi.vy = r.avy;
-                        nj.x = r.bx; nj.y = r.by; pj.vx = r.bvx; pj.vy = r.bvy;
-
-                        // Recalcula speed escalar e ângulo a partir do novo vetor
-                        pi.speed = Math.sqrt(pi.vx**2 + pi.vy**2) * (pi.speed < 0 ? -1 : 1);
-                        pj.speed = Math.sqrt(pj.vx**2 + pj.vy**2) * (pj.speed < 0 ? -1 : 1);
-
-                        // Stun proporcional ao impacto
-                        let impactMag = mDist(pi.vx, pi.vy, pj.vx, pj.vy);
-                        let stunTime  = Math.round(30 + impactMag * 80);
-
-                        pi.state = 'stunned'; pi.stateTimer = stunTime; pi.policeCooldown = 50;
-                        pj.state = 'stunned'; pj.stateTimer = stunTime; pj.policeCooldown = 50;
-                    }
+                    let ni = next[i], nj = next[j];
+                    let r = resolveOBBCollision(
+                        ni.x, ni.y, pi.vx, pi.vy, pi.angle,
+                        nj.x, nj.y, pj.vx, pj.vy, pj.angle, 0.5
+                    );
+                    if (!r) continue;
+                    ni.x = r.ax; ni.y = r.ay; pi.vx = r.avx; pi.vy = r.avy;
+                    nj.x = r.bx; nj.y = r.by; pj.vx = r.bvx; pj.vy = r.bvy;
+                    pi.speed = Math.hypot(pi.vx, pi.vy) * (pi.speed < 0 ? -1 : 1);
+                    pj.speed = Math.hypot(pj.vx, pj.vy) * (pj.speed < 0 ? -1 : 1);
+                    let imp  = mDist(pi.vx, pi.vy, pj.vx, pj.vy);
+                    let stun = Math.round(30 + imp * 80);
+                    pi.state = 'stunned'; pi.stateTimer = stun; pi.policeCooldown = 50;
+                    pj.state = 'stunned'; pj.stateTimer = stun; pj.policeCooldown = 50;
                 }
             }
 
-            // 2b) Policiais vs Jogador
+            // ── FASE 2b: OBB polícia vs jogador ───────────────────────────
             if (isDriving && !isWasted) {
                 for (let i = 0; i < policeCars.length; i++) {
-                    let p  = policeCars[i];
-                    let np = nextPositions[i];
-                    let d  = mDist(np.x, np.y, pm.x, pm.y);
+                    let p = policeCars[i], np = next[i];
+                    let r = resolveOBBCollision(
+                        pm.x, pm.y, pvx,  pvy,  angle,
+                        np.x, np.y, p.vx, p.vy, p.angle, 0.45
+                    );
+                    if (!r) continue;
 
-                    if (d < COLLIDE_DIST) {
-                        // Velocidade do jogador em m/frame
-                        let pvxCur = speed * Math.sin(pRad);
-                        let pvyCur = speed * Math.cos(pRad);
+                    np.x = r.bx; np.y = r.by; p.vx = r.bvx; p.vy = r.bvy;
+                    p.speed = Math.hypot(p.vx, p.vy) * (p.speed < 0 ? -1 : 1);
 
-                        let r = resolveCircleCollision(
-                            pm.x, pm.y, pvxCur, pvyCur,
-                            np.x,  np.y,  p.vx,  p.vy,
-                            0.45
-                        );
+                    let nS = Math.hypot(r.avx, r.avy);
+                    speed = nS * ((r.avx*pvx + r.avy*pvy) >= 0 ? 1 : -1);
+                    if (nS > 0.01) angle = Math.atan2(r.avx, r.avy) * 180 / Math.PI;
 
-                        // Aplica posição separada ao policial
-                        np.x = r.bx; np.y = r.by;
-                        p.vx = r.bvx; p.vy = r.bvy;
-
-                        // Recalcula speed do policial
-                        p.speed = Math.sqrt(p.vx**2 + p.vy**2) * (p.speed < 0 ? -1 : 1);
-
-                        // Novo speed e ângulo do jogador a partir do vetor resultante
-                        let newSpeed = Math.sqrt(r.avx**2 + r.avy**2);
-                        // Mantém o sinal (frente/ré) baseado no produto interno com direção original
-                        let sameDir  = r.avx * pvxCur + r.avy * pvyCur;
-                        speed  = newSpeed * (sameDir >= 0 ? 1 : -1);
-                        // Atualiza o ângulo de acordo com o novo vetor de movimento
-                        if (newSpeed > 0.01) {
-                            angle = Math.atan2(r.avx, r.avy) * 180 / Math.PI;
-                        }
-
-                        // ── Dano e estado ──
-                        let isRam = p.state === 'ram';
-                        if (isRam) {
-                            // Raspão intencional
-                            health -= 7 + stars;
-                            reputation -= 4;
-                            p.state = 'avoid';
-                            p.stateTimer = 45;
-                            p.ramCooldown = 130 + Math.random() * 50;
-                        } else {
-                            // Toque normal / preso
-                            if (Math.abs(speed) < 0.04) {
-                                triggerWasted("PRESO!");
-                                return;
-                            }
-                            health -= 3;
-                            reputation -= 2;
-                            p.state = 'stunned';
-                            p.stateTimer = 40;
-                        }
-
-                        checkCarVisuals();
-                        if (health <= 0) { triggerWasted("CARRO DESTRUÍDO!"); return; }
-
-                        statusColor   = "#2196F3";
-                        isHitFlashing = true;
-                        carElement.style.background = "#2196F3";
-                        carElement.style.boxShadow  = "0 0 20px 10px #2196F3";
-                        setTimeout(() => {
-                            isHitFlashing = false;
-                            if (!isWasted && isDriving) carElement.style.background = "#d32f2f";
-                        }, 180);
+                    if (p.state === 'ram') {
+                        health -= 7 + stars; reputation -= 4;
+                        p.state = 'avoid'; p.stateTimer = 45;
+                        p.ramCooldown = 130 + Math.random() * 50;
+                    } else {
+                        if (Math.abs(speed) < 0.04) { triggerWasted("PRESO!"); return; }
+                        health -= 3; reputation -= 2;
+                        p.state = 'stunned'; p.stateTimer = 40;
                     }
+                    checkCarVisuals();
+                    if (health <= 0) { triggerWasted("CARRO DESTRUÍDO!"); return; }
+                    statusColor = "#2196F3"; isHitFlashing = true;
+                    carElement.style.background = "#2196F3";
+                    carElement.style.boxShadow  = "0 0 20px 10px #2196F3";
+                    setTimeout(() => {
+                        isHitFlashing = false;
+                        if (!isWasted && isDriving) carElement.style.background = "#d32f2f";
+                    }, 180);
                 }
             }
 
             // Captura a pé
             if (!isDriving && !isWasted) {
-                for (let p of policeCars) {
-                    let cm = posToMeters(p.lat, p.lng);
-                    if (mDist(cm.x, cm.y, pm.x, pm.y) < COLLIDE_DIST && p.state !== 'stunned') {
-                        triggerWasted("PRESO!");
-                        return;
+                for (let i = 0; i < policeCars.length; i++) {
+                    let cm = posToMeters(policeCars[i].lat, policeCars[i].lng);
+                    if (mDist(cm.x, cm.y, pm.x, pm.y) < 3.5 && policeCars[i].state !== 'stunned') {
+                        triggerWasted("PRESO!"); return;
                     }
                 }
             }
 
-            // ── FASE 3: confirma posições, testa prédio ─────────────────────
+            // ── FASE 3: confirma posição, OBB vs prédio ───────────────────
             for (let i = 0; i < policeCars.length; i++) {
-                let p  = policeCars[i];
-                let np = nextPositions[i];
-                let dest = metersToPos(np.x, np.y);
-
-                // Colisão com prédio
-                let hitBuilding = buildingPolygons.some(poly =>
-                    isPointInPolygon([dest.lng, dest.lat], poly)
-                );
-
-                if (hitBuilding) {
-                    // Quica para trás e fica atordoado
-                    p.speed  = -p.speed * 0.35;
-                    p.vx    *= -0.35;
-                    p.vy    *= -0.35;
+                let p = policeCars[i], np = next[i];
+                if (obbHitsBuilding(np.x, np.y, p.angle)) {
+                    p.speed *= -0.35; p.vx *= -0.35; p.vy *= -0.35;
                     p.angle += (Math.random() > 0.5 ? 1 : -1) * (20 + Math.random() * 25);
-                    p.state  = 'stunned';
-                    p.stateTimer = 50;
-                    // Não move — fica na posição atual
+                    p.state = 'stunned'; p.stateTimer = 50;
                 } else {
-                    p.lat = dest.lat;
-                    p.lng = dest.lng;
+                    let dest = metersToPos(np.x, np.y);
+                    p.lat = dest.lat; p.lng = dest.lng;
                 }
             }
         }
@@ -1781,7 +2215,8 @@
         }
 
         function updateRender() {
-            if (map) map.setView([lat, lng], 20, { animate: false }); 
+            if (map) map.setView([lat, lng], 20, { animate: false });
+            if (debugMode) drawDebugOverlay();
 
             policeCars.forEach(p => {
                 if (map) {
