@@ -491,6 +491,7 @@
 
         let speed = 0;
         let angle = 0; 
+        let steering = 0; // NOVO: Controle de inércia do volante
         
         let isDriving = true;
         let carLat = 0, carLng = 0, carAngle = 0;
@@ -604,6 +605,7 @@
                 setTimeout(() => {
                     speed = 0;
                     angle = 0;
+                    steering = 0;
                     isDriving = true;
                     autoWalkToCar = false;
                     health = maxHealth; 
@@ -1060,11 +1062,23 @@
 
                 if (Math.abs(speed) > 0.01) {
                     const turnDirection = speed > 0 ? 1 : -1;
-                    let isTurning = false;
-                    if (keys.ArrowLeft) { angle -= currentTurnSpeed * turnDirection; isTurning = true; }
-                    if (keys.ArrowRight) { angle += currentTurnSpeed * turnDirection; isTurning = true; }
                     
-                    // Removido o freio artificial que deixava a jogabilidade ruim!
+                    // NOVO: Suavização do volante (Steering Smoothing)
+                    // Evita que o carro vire bruscamente com "toquinhos" no celular
+                    let steerSpeed = isTouchMode ? 0.12 : 0.25;
+                    
+                    if (keys.ArrowLeft) { 
+                        steering -= steerSpeed; 
+                    } else if (keys.ArrowRight) { 
+                        steering += steerSpeed; 
+                    } else {
+                        steering *= 0.5; // Volante volta rapidamente para o centro ao soltar
+                    }
+                    
+                    // Trava o limite de giro do volante entre -1 e 1
+                    steering = Math.max(-1, Math.min(1, steering));
+
+                    angle += currentTurnSpeed * steering * turnDirection;
                 }
 
                 if (speed > currentMaxSpeed) speed = currentMaxSpeed;
